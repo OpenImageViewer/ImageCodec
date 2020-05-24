@@ -1,4 +1,4 @@
-#Codec DDS
+#Image Loader
 cmake_minimum_required(VERSION 3.8)
 
 file(GLOB_RECURSE sourceFiles
@@ -7,7 +7,7 @@ file(GLOB_RECURSE sourceFiles
 )
 
 set(TargetName ImageLoader)
-add_library (${TargetName} ${sourceFiles} )
+add_library(${TargetName} ${sourceFiles})
 
 target_include_directories(${TargetName} PRIVATE ./Include)
 target_link_libraries(${TargetName}
