@@ -1,4 +1,4 @@
-#include "../Include/CodecJPGFactory.h"
+#include "../Include/CodecjpgFactory.h"
 #include "CodecJpeg.h"
 
 namespace IMCodec

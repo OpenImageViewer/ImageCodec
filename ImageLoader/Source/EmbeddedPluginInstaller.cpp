@@ -1,11 +1,5 @@
 #include "EmbeddedPluginInstaller.h"
 #include "ImageLoader.h"
-#if __has_include(<EmbeddedCodecsBuildConfig.h>)
-    #include <EmbeddedCodecsBuildConfig.h>
-#else 
-    #pragma message("Warning: Could not find local user build configuration file for embedded codecs, adding support for DDS only.")
-    #define IMCODEC_BUILD_CODEC_DDS  1
-#endif
 
 //TODO: Take configuration out to a new file
 #if IMCODEC_BUILD_CODEC_PSD == 1
@@ -20,7 +14,7 @@
 #if IMCODEC_BUILD_CODEC_DDS == 1
 #include "../../Codecs/CodecDDS/Include/CodecDDSFactory.h"
 #endif
-#if IMCODEC_BUILD_CODEC_FREE_IMAGE == 1
+#if IMCODEC_BUILD_CODEC_FREEIMAGE == 1
     #include "../../Codecs/CodecFreeImage/Include/CodecFreeImageFactory.h"
 #endif
 
@@ -30,6 +24,10 @@
 
 #if IMCODEC_BUILD_CODEC_GIF == 1
 #include "../../Codecs/CodecGif/Include/CodecGifFactory.h"
+#endif
+
+#if IMCODEC_BUILD_CODEC_WEBP == 1
+#include "../../Codecs/CodecWebP/Include/CodecWebPFactory.h"
 #endif
 
 namespace IMCodec
@@ -56,8 +54,12 @@ namespace IMCodec
         imageLoader->InstallPlugin(CodecGifFactory::Create());
 #endif
 
+#if IMCODEC_BUILD_CODEC_WEBP == 1
+        imageLoader->InstallPlugin(CodecWebPFactory::Create());
+#endif
+    	
 // keep freeimage the last priority codec as it's inferior
-#if IMCODEC_BUILD_CODEC_FREE_IMAGE == 1
+#if IMCODEC_BUILD_CODEC_FREEIMAGE == 1
         imageLoader->InstallPlugin(CodecFreeImageFactory::Create());
 #endif
         return true;
