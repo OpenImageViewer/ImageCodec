@@ -56,10 +56,28 @@ namespace IMCodec
                 case 8:
                     texelFormat = TexelFormat::I_X8;
                     break;
+                case 16:
+                    texelFormat = TexelFormat::I_X16;
+                    break;
                 default:
                     LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported integer format.");
                 }
                 break;
+            case SAMPLEFORMAT_INT:
+
+                switch (bitsPerSample)
+                {
+                case 8:
+                    texelFormat = TexelFormat::S_X8;
+                    break;
+                case 16:
+                    texelFormat = TexelFormat::S_X16;
+                    break;
+                default:
+                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported integer format.");
+                }
+                break;
+
             default:
                 LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported type format.");
             }
