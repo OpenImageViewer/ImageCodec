@@ -25,7 +25,6 @@ namespace IMCodec
 
         void LoadSurface(bool isCompressed , unsigned storageFormat, const nv_dds::CSurface& surface , TexelFormat format, ImageDescriptor& out_properties)
         {
-
             LLUtils::Buffer decompressedBuffer;
 
             const uint32_t decompressedTexelSize = GetTexelFormatSize(format) / 8;
@@ -33,9 +32,8 @@ namespace IMCodec
 
             if (isCompressed)
             {
-                //Not sure why need to add extra padding here.
-                constexpr int padding = 4;
-                decompressedBuffer.Allocate(decompressedTexelSize * (surface.get_width() + padding) * surface.get_height());
+
+                decompressedBuffer.Allocate(decompressedTexelSize * LLUtils::Utility::Align<size_t>( surface.get_width(),4) * LLUtils::Utility::Align<size_t>(surface.get_height(),4));
 
                 switch (storageFormat)
                 {
