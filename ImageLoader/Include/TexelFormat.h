@@ -18,11 +18,17 @@ namespace IMCodec
           BEGIN
         , UNKNOWN = BEGIN
         , I_R8_G8_B8
+        , I_R16_G16_B16
         , I_R8_G8_B8_A8
+        , I_R16_G16_B16_A16
         , I_B8_G8_R8
+        , I_B16_G16_R16
         , I_B8_G8_R8_A8
+        , I_B16_G16_R16_A16
         , I_A8_R8_G8_B8
+        , I_A16_R16_G16_B16
         , I_A8_B8_G8_R8
+        , I_A16_B16_G16_R16
         , I_A8
         , I_X1
         , I_X8
@@ -40,11 +46,17 @@ namespace IMCodec
         {
              0       // TF_UNKNOWN
             ,24      // TF_I_R8_G8_B8
+            ,48      // TF_I_R16_G16_B16
             ,32      // TF_I_R8_G8_B8_A8
+            ,64      // TF_I_R16_G16_B16_A16
             ,24      // TF_I_B8_G8_R8
+            ,48      // TF_I_B16_G16_R16
             ,32      // TF_I_B8_G8_R8_A8
+            ,64      // TF_I_B16_G16_R16_A16
             ,32      // TF_I_A8_R8_G8_B8
+            ,64      // TF_I_A16_R16_G16_B16
             ,32      // TF_I_A8_B8_G8_R8
+            ,64      // TF_I_A16_B16_G16_R16
             ,8       // TF_I_A8
             ,1       // TF_I_X1
             ,8       // TF_I_X8

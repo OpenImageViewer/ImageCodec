@@ -51,47 +51,64 @@ namespace IMCodec
             {
                 
                 //Assign image properties
-                out_properties.fProperties.RowPitchInBytes = PNG_IMAGE_ROW_STRIDE(image);
+                const auto sizeofChannel = static_cast<unsigned int>(PNG_IMAGE_PIXEL_COMPONENT_SIZE(image.format));
+                const auto rowPitch = PNG_IMAGE_ROW_STRIDE(image) * sizeofChannel;
+
+                out_properties.fProperties.RowPitchInBytes = rowPitch;
                 out_properties.fProperties.Width = image.width;
                 out_properties.fProperties.Height = image.height;
 
                 int numChannles = 0;
-                int sizeofChannel = 0;
+
+
                 LLUtils::Buffer colorMap;
 
+
+                TexelFormat textFormat = TexelFormat::UNKNOWN;
+                const bool isSingleChannel = sizeofChannel == 1;
                 switch (image.format)
                 {
+                case PNG_FORMAT_GRAY | PNG_FORMAT_FLAG_LINEAR:
                 case PNG_FORMAT_GRAY:
-                      out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_X8;
+                    textFormat = isSingleChannel ? TexelFormat::I_X8 : TexelFormat::I_X16;
                       break;
+                case PNG_FORMAT_RGBA | PNG_FORMAT_FLAG_LINEAR:
                 case PNG_FORMAT_RGBA:
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
+                    textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8_A8 : TexelFormat::I_R16_G16_B16_A16;
                     break;
                 case PNG_FORMAT_RGB:
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8;
+                case PNG_FORMAT_RGB | PNG_FORMAT_FLAG_LINEAR:
+                    textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8 : TexelFormat::I_R16_G16_B16;
                     break;
+                case PNG_FORMAT_FLAG_ALPHA | PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP | PNG_FORMAT_FLAG_LINEAR:
                 case PNG_FORMAT_FLAG_ALPHA | PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP:
                     numChannles = 4;
-                    sizeofChannel = 1;
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
-                    out_properties.fProperties.RowPitchInBytes = image.width * numChannles;
+                    textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8_A8 : TexelFormat::I_R16_G16_B16_A16;
+                    //out_properties.fProperties.RowPitchInBytes = image.width * numChannles;
                     break;
+                case  PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP | PNG_FORMAT_FLAG_LINEAR:
                 case  PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP:
                     numChannles = 3;
-                    sizeofChannel = 1;
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8;
-                    out_properties.fProperties.RowPitchInBytes = image.width * numChannles;
+                    textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8 : TexelFormat::I_R16_G16_B16;
+                    //out_properties.fProperties.RowPitchInBytes = image.width * numChannles;
                     break;
                 default:
                     LL_EXCEPTION_NOT_IMPLEMENT("Png image format not supported");
-
                 }
+                 
+                uint8_t const colormapWidth = 1;
+
+                out_properties.fProperties.TexelFormatDecompressed = textFormat;
+
 
                  LLUtils::BitFlags<PngFormatFlags> formatFlags( static_cast<PngFormatFlags>(image.format));
 
 
                  if (formatFlags.test(PngFormatFlags::ColorMap))
-                     colorMap.Allocate(numChannles * sizeofChannel * image.colormap_entries);
+                 {
+                     colorMap.Allocate(numChannles * colormapWidth * image.colormap_entries);
+                     out_properties.fProperties.RowPitchInBytes = numChannles * image.width;
+                 }
 
                     
                 out_properties.fProperties.NumSubImages = 0;
@@ -100,7 +117,7 @@ namespace IMCodec
                 out_properties.fData.Allocate(PNG_IMAGE_SIZE(image));
 
                 if (out_properties.fData.GetBuffer() != nullptr &&
-                    png_image_finish_read(&image, nullptr/*background*/, out_properties.fData.GetBuffer(),
+                    png_image_finish_read (&image, nullptr/*background*/, out_properties.fData.GetBuffer(),
                         PNG_IMAGE_ROW_STRIDE(image), colorMap.GetBuffer()) != 0)
                 {
 
