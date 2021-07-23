@@ -24,4 +24,10 @@ namespace IMCodec
         }
         virtual PluginProperties& GetPluginProperties() = 0;
     };
+
+    class IImageLoader
+    {
+    public:
+        virtual bool Load(uint8_t* buffer, std::size_t size, char* extension, bool onlyRegisteredExtension, VecImageSharedPtr& out_images) const = 0;
+    };
 }

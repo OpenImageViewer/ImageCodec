@@ -30,6 +30,10 @@
 #include "../../Codecs/CodecWebP/Include/CodecWebPFactory.h"
 #endif
 
+#if IMCODEC_BUILD_CODEC_ICON == 1
+#include "../../Codecs/CodecIcon/Include/CodecIconFactory.h"
+#endif
+
 namespace IMCodec
 {
     bool EmbeddedPluginInstaller::InstallPlugins(ImageLoader* imageLoader)
@@ -56,6 +60,10 @@ namespace IMCodec
 
 #if IMCODEC_BUILD_CODEC_WEBP == 1
         imageLoader->InstallPlugin(CodecWebPFactory::Create());
+#endif
+
+#if IMCODEC_BUILD_CODEC_ICON == 1
+        imageLoader->InstallPlugin(CodecIconFactory::Create(imageLoader));
 #endif
     	
 // keep freeimage the last priority codec as it's inferior

@@ -7,7 +7,7 @@
 
 namespace IMCodec
 {
-    class ImageLoader
+    class ImageLoader : public IImageLoader
     {
         typedef std::vector<IImagePlugin*> ListPlugin;
         typedef std::unordered_map<std::wstring, ListPlugin> MapStringListPlugin;

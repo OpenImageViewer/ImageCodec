@@ -82,8 +82,11 @@ namespace IMCodec
 
        bool loaded = false;
 
-        
-        IImagePlugin* choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower(LLUtils::StringUtility::ToWString(extension)));
+       IImagePlugin* choosenPlugin = nullptr;
+
+       if ( extension != nullptr)
+            choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower(LLUtils::StringUtility::ToWString(extension)));
+
         if (choosenPlugin != nullptr)
             loaded = TryLoad(choosenPlugin, buffer, size, out_images);
 

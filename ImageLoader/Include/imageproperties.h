@@ -42,10 +42,10 @@ namespace IMCodec
             {
                 return !( false 
                     || TexelFormatDecompressed == TexelFormat::UNKNOWN
-                    || Width == std::numeric_limits<std::size_t>::max()
-                    || Height == std::numeric_limits<std::size_t>::max()
-                    || RowPitchInBytes == std::numeric_limits<std::size_t>::max()
-                    || NumSubImages == std::numeric_limits<std::size_t>::max()//TODO: Change to a const expression
+                    || Width == std::numeric_limits<decltype(Width)>::max()
+                    || Height == std::numeric_limits<decltype(Height)>::max()
+                    || RowPitchInBytes == std::numeric_limits<decltype(RowPitchInBytes)>::max()
+                    || NumSubImages == std::numeric_limits<decltype(NumSubImages)>::max()//TODO: Change to a const expression
                 );
             }
         };

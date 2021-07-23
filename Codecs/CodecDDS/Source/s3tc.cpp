@@ -103,8 +103,6 @@ void BlockDecompressImageDXT1(unsigned long width, unsigned long height, const u
 {
     unsigned long blockCountX = (width + 3) / 4;
     unsigned long blockCountY = (height + 3) / 4;
-    unsigned long blockWidth = (width < 4) ? width : 4;
-    unsigned long blockHeight = (height < 4) ? height : 4;
 
     for (unsigned long j = 0; j < blockCountY; j++)
     {
@@ -234,8 +232,6 @@ void BlockDecompressImageDXT5(unsigned long width, unsigned long height, const u
 {
     unsigned long blockCountX = (width + 3) / 4;
     unsigned long blockCountY = (height + 3) / 4;
-    unsigned long blockWidth = (width < 4) ? width : 4;
-    unsigned long blockHeight = (height < 4) ? height : 4;
 
     for (unsigned long j = 0; j < blockCountY; j++)
     {
