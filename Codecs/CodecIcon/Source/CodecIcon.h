@@ -106,8 +106,8 @@ namespace IMCodec
                             currentDescriptor.fData.Allocate(currentDescriptor.fProperties.Width * currentDescriptor.fProperties.Height * 4);
 
                             const uint8_t* baseSourceAddress = reinterpret_cast<const uint8_t*>(bitmapInfo + 1);
-                            const size_t sourceRowPitch = bitmapInfo->biBitCount * currentDescriptor.fProperties.Width / CHAR_BIT;
-                            const size_t sourceRowPitchMask = MaskBitCount * currentDescriptor.fProperties.Width / CHAR_BIT;
+                            const size_t sourceRowPitch = ((bitmapInfo->biBitCount * currentDescriptor.fProperties.Width + 31) & ~31) >> 3;
+                            const size_t sourceRowPitchMask = (((MaskBitCount * currentDescriptor.fProperties.Width) + 31) & ~31) >> 3;
                             const size_t masktartOffset = currentDescriptor.fProperties.Height * sourceRowPitch;
 
                             switch (bitmapInfo->biBitCount)
@@ -116,35 +116,69 @@ namespace IMCodec
                             case 4:
                             case 8:
                             {
-                                if (bitmapInfo->biBitCount == 1 || bitmapInfo->biBitCount == 4 || bitmapInfo->biBitCount == 8)
+                                const uint32_t* colorTable = reinterpret_cast<const uint32_t*>(baseSourceAddress);
+                                baseSourceAddress += (bitmapInfo->biClrUsed == 0 ? (1 << bitmapInfo->biBitCount) : bitmapInfo->biClrUsed) * sizeof(uint32_t);
+
+                                if (bitmapInfo->biHeight != currentEntry->height * 2)
                                 {
-                                    const uint32_t* colorTable = reinterpret_cast<const uint32_t*>(baseSourceAddress);
-                                    baseSourceAddress += (currentEntry->numColors != 0 ? currentEntry->numColors : 256) * sizeof(uint32_t);
+                                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not find mask data");
+                                }
 
-                                    if (bitmapInfo->biHeight != currentEntry->height * 2)
+                                for (size_t line = 0; line < currentDescriptor.fProperties.Height; line++)
+                                {
+                                    auto sourceLineOffset = (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitch;
+                                    auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitchMask;
+                                    auto destLineOffset = line * currentDescriptor.fProperties.RowPitchInBytes;
+
+                                    for (int x = 0; x < currentDescriptor.fProperties.Width; x++)
                                     {
-                                        LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not find mask data");
-                                    }
-
-                                    for (size_t line = 0; line < currentDescriptor.fProperties.Height; line++)
-                                    {
-                                        auto sourceLineOffset = (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitch;
-                                        auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitchMask;
-                                        auto destLineOffset = line * currentDescriptor.fProperties.RowPitchInBytes;
-
-                                        for (int x = 0; x < currentDescriptor.fProperties.Width; x++)
-                                        {
-                                            uint8_t pixelIndex = GetValue(bitmapInfo->biBitCount, baseSourceAddress + sourceLineOffset, x);
-                                            uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
-                                            uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | colorTable[pixelIndex];
-                                            uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.GetBuffer()) + destLineOffset) + x;
-                                            *currentpixel = color;
-                                        }
+                                        uint8_t pixelIndex = GetValue(bitmapInfo->biBitCount, baseSourceAddress + sourceLineOffset, x);
+                                        uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
+                                        uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | colorTable[pixelIndex];
+                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.GetBuffer()) + destLineOffset) + x;
+                                        *currentpixel = color;
                                     }
                                 }
+
                             }
                                 break;
+                            case 24:
+                                if (bitmapInfo->biHeight != currentEntry->height * 2)
+                                {
+                                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not find mask data");
+                                }
 
+                                for (size_t line = 0; line < currentDescriptor.fProperties.Height; line++)
+                                {
+                                    auto sourceLineOffset = (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitch;
+                                    auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitchMask;
+                                    auto destLineOffset = line * currentDescriptor.fProperties.RowPitchInBytes;
+
+                                    for (int x = 0; x < currentDescriptor.fProperties.Width; x++)
+                                    {
+#pragma pack(push,1)
+                                        struct Color24
+                                        {
+                                            uint8_t B;
+                                            uint8_t G;
+                                            uint8_t R;
+                                            operator int() const
+                                            {
+                                                return (R << 16) | (G << 8) | B;
+                                            }
+                                        };
+#pragma pack(pop)
+
+                                        Color24 color24 =  *reinterpret_cast<const Color24*>(baseSourceAddress + sourceLineOffset + x * sizeof(Color24));
+                                        uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
+                                        uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | color24;
+                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.GetBuffer()) + destLineOffset) + x;
+                                        *currentpixel = color;
+                                    }
+                                }
+
+
+                                break;
                             case 32:
                                 for (size_t line = 0; line < currentDescriptor.fProperties.Height; line++)
                                 {
