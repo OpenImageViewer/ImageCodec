@@ -93,10 +93,18 @@ namespace IMCodec
         
         // If image not loaded and allow to load using unregistred file extensions, iterate over all image plugins.
         if (loaded == false && onlyRegisteredExtension == false)
+        {
             for (auto plugin : fListPlugins)
+            {
                 // In case we try to a choosen plugin and it failed. don't try again.
                 if (plugin != choosenPlugin)
+                {
                     loaded = TryLoad(plugin, buffer, size, out_images);
+                    if (loaded == true)
+                        break;
+                }
+            }
+        }
 
         return loaded;
     }
