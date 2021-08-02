@@ -24,6 +24,7 @@ namespace IMCodec
         struct MetaData
         {
             double LoadTime = 0.0;
+            const char* pluginUsed = nullptr;
             int exifOrientation = 0;
         };
 

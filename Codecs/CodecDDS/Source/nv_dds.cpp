@@ -511,7 +511,7 @@ void CDDSImage::load(istream& is, bool flipImage) {
     if (strncmp(filecode, "DDS ", 4) != 0) {
         throw runtime_error("not a DDS file");
     }
-
+    
     // read in DDS header
     DDS_HEADER ddsh;
     is.read((char*)&ddsh, sizeof(DDS_HEADER));

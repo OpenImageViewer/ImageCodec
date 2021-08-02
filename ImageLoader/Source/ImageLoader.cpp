@@ -68,6 +68,7 @@ namespace IMCodec
                 if ((imageDescriptor.IsInitialized() == true)) // verify image descriptor is properly initialized
                 {
                     imageDescriptor.fMetaData.LoadTime = loadTime;
+                    imageDescriptor.fMetaData.pluginUsed = plugin->GetPluginProperties().pluginDescription.c_str();
                     out_images.push_back(std::make_shared<Image>(imageDescriptor));
                 }
             
