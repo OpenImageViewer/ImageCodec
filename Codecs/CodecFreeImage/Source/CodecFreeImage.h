@@ -80,6 +80,9 @@ namespace IMCodec
 
                     }
                 }
+                break;
+                default:
+                    LL_EXCEPTION_NOT_IMPLEMENT("Decoding the type of texture is yet to be implemented.");
 
                 }
 

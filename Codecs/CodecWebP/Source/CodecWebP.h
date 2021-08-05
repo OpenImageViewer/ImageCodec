@@ -1,7 +1,10 @@
 #pragma once
 #include <IImagePlugin.h>
+#include <LLUtils/Warnings.h>
+LLUTILS_DISABLE_WARNING_PUSH
+LLUTILS_DISABLE_WARNING_SEMICOLON_OUTSIDE_FUNCTION
 #include <webp/decode.h>
-
+LLUTILS_DISABLE_WARNING_POP
 namespace IMCodec
 {
     class CodecWebP : public IImagePlugin
@@ -35,10 +38,7 @@ namespace IMCodec
                     out_properties.fProperties.TexelFormatStorage = TexelFormat::I_B8_G8_R8_A8;
                     out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
                     out_properties.fData = std::move(decodedBuffer);
-
-                    const size_t imageSize = out_properties.fProperties.Height * out_properties.fProperties.RowPitchInBytes;
-                    /*out_properties.fData.Allocate(imageSize);
-                    out_properties.fData.Write(reinterpret_cast<std::byte*>(decoded), 0, imageSize);*/
+                    
                     return true;
                 }
 

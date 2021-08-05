@@ -116,9 +116,9 @@ namespace IMCodec
                 //read buffer
                 out_properties.fData.Allocate(PNG_IMAGE_SIZE(image));
 
-                if (out_properties.fData.GetBuffer() != nullptr &&
-                    png_image_finish_read (&image, nullptr/*background*/, out_properties.fData.GetBuffer(),
-                        PNG_IMAGE_ROW_STRIDE(image), colorMap.GetBuffer()) != 0)
+                if (out_properties.fData.data() != nullptr &&
+                    png_image_finish_read (&image, nullptr/*background*/, out_properties.fData.data(),
+                        PNG_IMAGE_ROW_STRIDE(image), colorMap.data()) != 0)
                 {
 
                     if (colorMap != nullptr)
@@ -129,13 +129,13 @@ namespace IMCodec
                         
                         for (size_t pixelIndex = 0; pixelIndex < image.width * image.height; pixelIndex++)
                         {
-                            size_t colorIndex = ((uint8_t*)(out_properties.fData.GetBuffer()))[pixelIndex];
+                            size_t colorIndex = ((uint8_t*)(out_properties.fData.data()))[pixelIndex];
 
                             size_t sourcePos = colorIndex * pixelSize;
                             size_t destPos = pixelIndex * pixelSize;
                             
-                            memcpy( reinterpret_cast<uint8_t*>(unmappedBuuffer.GetBuffer()) + destPos
-                                , reinterpret_cast<uint8_t*>(colorMap.GetBuffer()) + sourcePos, pixelSize);
+                            memcpy( reinterpret_cast<uint8_t*>(unmappedBuuffer.data()) + destPos
+                                , reinterpret_cast<uint8_t*>(colorMap.data()) + sourcePos, pixelSize);
                         }
                         out_properties.fData = std::move(unmappedBuuffer);
                     }

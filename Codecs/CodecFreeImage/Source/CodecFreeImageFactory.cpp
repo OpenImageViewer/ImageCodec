@@ -1,4 +1,4 @@
-#include "../include/CodecFreeImageFactory.h"
+#include "../Include/CodecFreeImageFactory.h"
 #include "CodecFreeImage.h"
 
 namespace IMCodec

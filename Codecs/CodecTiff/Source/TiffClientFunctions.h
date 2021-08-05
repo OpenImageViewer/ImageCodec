@@ -24,7 +24,7 @@ namespace IMCodec
     }
 
 
-    tsize_t tiff_write(thandle_t handle, tdata_t data, tsize_t size)
+    tsize_t tiff_write([[maybe_unused]] thandle_t handle, [[maybe_unused]] tdata_t data, [[maybe_unused]] tsize_t size)
     {
         return  0;
     }
@@ -45,7 +45,6 @@ namespace IMCodec
             currentPos += bufferInfo->size + offset;
             break;
         default:
-            int k = 0;
             break;
         }
         return bufferInfo->currentPos;

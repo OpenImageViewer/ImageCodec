@@ -28,8 +28,6 @@ namespace IMCodec
             LLUtils::Buffer decompressedBuffer;
 
             const uint32_t decompressedTexelSize = GetTexelFormatSize(format) / 8;
-            const uint32_t decompressedImageSize = decompressedTexelSize * surface.get_width() * surface.get_height();
-
             if (isCompressed)
             {
 
@@ -70,7 +68,7 @@ namespace IMCodec
             out_properties.fProperties.RowPitchInBytes = surface.get_width() * decompressedTexelSize;
         }
 
-        virtual bool LoadImages(const uint8_t* buffer, std::size_t size, std::vector<ImageDescriptor>& out_vec_properties)
+        virtual bool LoadImages(const uint8_t* buffer, std::size_t size, std::vector<ImageDescriptor>& out_vec_properties) override
         {
             using namespace std;
             using namespace nv_dds;

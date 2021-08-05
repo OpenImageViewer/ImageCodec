@@ -15,7 +15,7 @@ namespace IMCodec
         }
         TiffFile(const uint8_t* buffer, tsize_t size)
         {
-            fBufferInfo = { buffer,size };
+            fBufferInfo = { buffer,size, 0};
             fTiff = ReadTiffFromMemory(fBufferInfo);
         }
         ~TiffFile()

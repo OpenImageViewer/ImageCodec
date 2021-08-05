@@ -19,7 +19,7 @@ namespace IMCodec
         GifReadContext* context = (GifReadContext*)(gifType->UserData);
         // dont overflow buffer;
         size_t bytesToRead = std::min<size_t>(length, context->bufferSize - context->pos);
-        if (bytesToRead != length)
+        if (bytesToRead != static_cast<size_t>(length))
         {
             //TODO: warning
         }

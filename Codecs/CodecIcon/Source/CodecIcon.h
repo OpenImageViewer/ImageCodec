@@ -64,7 +64,7 @@ namespace IMCodec
             return value;
         }
 
-        virtual bool LoadImages(const uint8_t* buffer, std::size_t size, std::vector<ImageDescriptor>& out_vec_properties)
+        virtual bool LoadImages(const uint8_t* buffer, std::size_t size, std::vector<ImageDescriptor>& out_vec_properties) override
         {
             using namespace std;
             bool success = false;
@@ -130,12 +130,12 @@ namespace IMCodec
                                     auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitchMask;
                                     auto destLineOffset = line * currentDescriptor.fProperties.RowPitchInBytes;
 
-                                    for (int x = 0; x < currentDescriptor.fProperties.Width; x++)
+                                    for (size_t x = 0; x < currentDescriptor.fProperties.Width; x++)
                                     {
                                         uint8_t pixelIndex = GetValue(bitmapInfo->biBitCount, baseSourceAddress + sourceLineOffset, x);
                                         uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
                                         uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | colorTable[pixelIndex];
-                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.GetBuffer()) + destLineOffset) + x;
+                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.data()) + destLineOffset) + x;
                                         *currentpixel = color;
                                     }
                                 }
@@ -154,7 +154,7 @@ namespace IMCodec
                                     auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitchMask;
                                     auto destLineOffset = line * currentDescriptor.fProperties.RowPitchInBytes;
 
-                                    for (int x = 0; x < currentDescriptor.fProperties.Width; x++)
+                                    for (size_t x = 0; x < currentDescriptor.fProperties.Width; x++)
                                     {
 #pragma pack(push,1)
                                         struct Color24
@@ -172,7 +172,7 @@ namespace IMCodec
                                         Color24 color24 =  *reinterpret_cast<const Color24*>(baseSourceAddress + sourceLineOffset + x * sizeof(Color24));
                                         uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
                                         uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | color24;
-                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.GetBuffer()) + destLineOffset) + x;
+                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.data()) + destLineOffset) + x;
                                         *currentpixel = color;
                                     }
                                 }
@@ -235,7 +235,7 @@ namespace IMCodec
 
 
         //Base abstract methods
-        bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
+        bool LoadImage([[maybe_unused]] const uint8_t* buffer, [[maybe_unused]] std::size_t size, [[maybe_unused]] ImageDescriptor& out_properties) override
         {
             return false;
          

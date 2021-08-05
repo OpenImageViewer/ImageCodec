@@ -3,10 +3,10 @@
 
 //TODO: Take configuration out to a new file
 #if IMCODEC_BUILD_CODEC_PSD == 1
-    #include <../../Codecs/CodecPSD/Include/CodecPSDFactory.h>
+    #include "../../Codecs/CodecPSD/Include/CodecPSDFactory.h"
 #endif
 #if IMCODEC_BUILD_CODEC_JPG == 1
-    #include <../../Codecs/CodecJpg/Include/CodecJPGFactory.h>
+    #include "../../Codecs/CodecJPG/Include/CodecJPGFactory.h"
 #endif
 #if IMCODEC_BUILD_CODEC_PNG == 1
     #include "../../Codecs/CodecPNG/Include/CodecPNGFactory.h"

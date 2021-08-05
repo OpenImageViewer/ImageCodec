@@ -1,6 +1,6 @@
 #pragma once
 #include <memory> // for shared_ptr
-#include "ImageProperties.h"
+#include "imageproperties.h"
 
 namespace IMCodec
 {
