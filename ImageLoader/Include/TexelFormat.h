@@ -62,16 +62,16 @@ namespace IMCodec
             numChannles = static_cast<uint8_t>(initList.size());
         }
 
-        template <size_t count, typename First, typename ...Args>
-        void Init(First first, Args ...args)
+        template <size_t count, typename _First, typename ..._Args>
+        void Init(_First first, _Args ...args)
         {
             channles.at(count) = first;
             texelSize += first.width;
             Init<count + 1>(args...);
         }
 
-        template <size_t count, typename First>
-        void Init(First first)
+        template <size_t count, typename _First>
+        void Init(_First first)
         {
             channles.at(count) = first;
             numChannles = count + 1;
@@ -117,13 +117,13 @@ namespace IMCodec
      ,{ {ChannelDataType::UnsignedInt, ChannelSemantic::Red,8 },         {ChannelDataType::UnsignedInt, ChannelSemantic::Green,8} ,    {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 8} }     //    ,24      // TF_I_R8_G8_B8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Red,16 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16} ,   {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 16}}//    ,48      // TF_I_R16_G16_B16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Red,8 },         {ChannelDataType::UnsignedInt, ChannelSemantic::Green,8},     {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 8}, {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 8}}//    ,32      // TF_I_R8_G8_B8_A8
-     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Red,16 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16},    {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 16}, {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 16}}//    ,64      // TF_I_R16_G16_B16_A16
+     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Red,16 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16},    {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 16}, {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 16}}//    ,64      // TF_I_R16_G16_B16_A16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,8 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,8},     {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 8}}//    ,24      // TF_I_B8_G8_R8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,16 },       {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16},    {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 16}}//    ,48      // TF_I_B16_G16_R16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,8 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,8},     {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 8},  {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 8}}//    ,32      // TF_I_B8_G8_R8_A8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,16 },       {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16},    {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 16},  {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 16}}//    ,64      // TF_I_B16_G16_R16_A16
-     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Opacity,8 },     {ChannelDataType::UnsignedInt, ChannelSemantic::Red,8},       {ChannelDataType::UnsignedInt, ChannelSemantic::Green, 8}}//    ,32      // TF_I_A8_R8_G8_B8
-     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Opacity,16 },    {ChannelDataType::UnsignedInt, ChannelSemantic::Red,16},      {ChannelDataType::UnsignedInt, ChannelSemantic::Green, 16}, {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 16}}//    ,64      // TF_I_A16_R16_G16_B16
+     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Opacity,8 },     {ChannelDataType::UnsignedInt, ChannelSemantic::Red,8},       {ChannelDataType::UnsignedInt, ChannelSemantic::Green, 8}, {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 8}}//    ,32      // TF_I_A8_R8_G8_B8
+     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Opacity,16 },    {ChannelDataType::UnsignedInt, ChannelSemantic::Blue,16},      {ChannelDataType::UnsignedInt, ChannelSemantic::Green, 16}, {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 16}}//    ,64      // TF_I_A16_R16_G16_B16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Opacity,8 },     {ChannelDataType::UnsignedInt, ChannelSemantic::Blue,8},      {ChannelDataType::UnsignedInt, ChannelSemantic::Green, 8},{ChannelDataType::UnsignedInt, ChannelSemantic::Red, 8}}//    ,32      // TF_I_A8_B8_G8_R8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Opacity,16 },    {ChannelDataType::UnsignedInt, ChannelSemantic::Blue,16},     {ChannelDataType::UnsignedInt, ChannelSemantic::Green, 16}, {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 16}}//    ,64      // TF_I_A16_B16_G16_R16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Monochrome,8 }}//    ,8       // TF_I_A8
@@ -132,10 +132,10 @@ namespace IMCodec
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Monochrome,16 }}//    ,16      // TF_I_X16
      ,{{ ChannelDataType::SignedInt  , ChannelSemantic::Monochrome,8 }}//    ,8       // TF_S_X8
      ,{{ ChannelDataType::SignedInt  , ChannelSemantic::Monochrome,16 }}//    ,16      // TF_S_X16
-     ,{{ ChannelDataType::Float      , ChannelSemantic::Monochrome,16 }}//    ,16      // TF_F_X16
-     ,{{ ChannelDataType::Float      , ChannelSemantic::Monochrome ,24 }}//    ,24      // TF_F_X24
-     ,{{ ChannelDataType::Float      , ChannelSemantic::Monochrome ,32 }}//    ,32      // TF_F_X32
-     ,{{ ChannelDataType::Float      , ChannelSemantic::Monochrome ,64 }}//    ,64      // TF_F_X64
+     ,{{ ChannelDataType::Float      , ChannelSemantic::Float,16 }}//    ,16      // TF_F_X16
+     ,{{ ChannelDataType::Float      , ChannelSemantic::Float ,24 }}//    ,24      // TF_F_X24
+     ,{{ ChannelDataType::Float      , ChannelSemantic::Float ,32 }}//    ,32      // TF_F_X32
+     ,{{ ChannelDataType::Float      , ChannelSemantic::Float ,64 }}//    ,64      // TF_F_X64
     };
 
     LLUTILS_FORCE_INLINE const TexelInfo& GetTexelInfo(TexelFormat format)
