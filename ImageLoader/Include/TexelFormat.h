@@ -39,7 +39,7 @@ namespace IMCodec
     {
 
     public:
-        uint16_t texelSize = 0;
+        uint8_t texelSize = 0;
         uint8_t numChannles = 0;
         static constexpr std::size_t channels_capacity = sizeof...(Args) + 1;
 
