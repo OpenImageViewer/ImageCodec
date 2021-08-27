@@ -30,7 +30,7 @@ namespace IMCodec
         using namespace LLUtils;
         fListPlugins.push_back(plugin);
         ListWString tokens = StringUtility::split(StringUtility::ToLower(
-            StringUtility::ToWString(plugin->GetPluginProperties().supportedExtentions)), ';');
+            StringUtility::ToWString(plugin->GetPluginProperties().supportedExtentions)), L';');
 
         for (auto token : tokens)
         {
