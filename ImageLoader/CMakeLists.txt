@@ -11,6 +11,10 @@ add_library (${TargetName} ${sourceFiles} )
 
 target_include_directories(${TargetName} PRIVATE ./Include)
 
+if ( ${IMCODEC_BUILD_CODEC_BMP})
+    target_link_libraries(${TargetName} CodecBMP)
+endif()
+
 if ( ${IMCODEC_BUILD_CODEC_DDS})
     target_link_libraries(${TargetName} CodecDDS)
 endif()

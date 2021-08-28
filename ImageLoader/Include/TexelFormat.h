@@ -88,6 +88,8 @@ namespace IMCodec
         , I_R8_G8_B8_A8
         , I_R16_G16_B16_A16
         , I_B8_G8_R8
+        , I_B5_G5_R5_X1 // 16 bit
+        , I_B5_G6_R5    // 16 bit
         , I_B16_G16_R16
         , I_B8_G8_R8_A8
         , I_B16_G16_R16_A16
@@ -97,6 +99,7 @@ namespace IMCodec
         , I_A16_B16_G16_R16
         , I_A8
         , I_X1
+        , I_X4
         , I_X8
         , I_X16
         , S_X8
@@ -119,6 +122,8 @@ namespace IMCodec
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Red,8 },         {ChannelDataType::UnsignedInt, ChannelSemantic::Green,8},     {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 8}, {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 8}}//    ,32      // TF_I_R8_G8_B8_A8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Red,16 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16},    {ChannelDataType::UnsignedInt, ChannelSemantic::Blue, 16}, {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 16}}//    ,64      // TF_I_R16_G16_B16_A16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,8 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,8},     {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 8}}//    ,24      // TF_I_B8_G8_R8
+     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,5 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,5},     {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 5},{ChannelDataType::UnsignedInt, ChannelSemantic::None, 1} }//    ,16      // TF_I_B5_G5_R5_X1
+     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,5 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,6},     {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 5}}//    ,16      // TF_I_B5_G6_R5
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,16 },       {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16},    {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 16}}//    ,48      // TF_I_B16_G16_R16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,8 },        {ChannelDataType::UnsignedInt, ChannelSemantic::Green,8},     {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 8},  {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 8}}//    ,32      // TF_I_B8_G8_R8_A8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Blue,16 },       {ChannelDataType::UnsignedInt, ChannelSemantic::Green,16},    {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 16},  {ChannelDataType::UnsignedInt, ChannelSemantic::Opacity, 16}}//    ,64      // TF_I_B16_G16_R16_A16
@@ -128,6 +133,7 @@ namespace IMCodec
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Opacity,16 },    {ChannelDataType::UnsignedInt, ChannelSemantic::Blue,16},     {ChannelDataType::UnsignedInt, ChannelSemantic::Green, 16}, {ChannelDataType::UnsignedInt, ChannelSemantic::Red, 16}}//    ,64      // TF_I_A16_B16_G16_R16
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Monochrome,8 }}//    ,8       // TF_I_A8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Monochrome,1 }}//    ,1       // TF_I_X1
+     ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Monochrome,4 }}//    ,4       // TF_I_X4
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Monochrome,8 }}//    ,8       // TF_I_X8
      ,{{ ChannelDataType::UnsignedInt, ChannelSemantic::Monochrome,16 }}//    ,16      // TF_I_X16
      ,{{ ChannelDataType::SignedInt  , ChannelSemantic::Monochrome,8 }}//    ,8       // TF_S_X8

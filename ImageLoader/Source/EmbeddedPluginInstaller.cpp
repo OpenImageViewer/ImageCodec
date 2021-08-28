@@ -5,6 +5,10 @@
 #if IMCODEC_BUILD_CODEC_PSD == 1
     #include "../../Codecs/CodecPSD/Include/CodecPSDFactory.h"
 #endif
+
+#if IMCODEC_BUILD_CODEC_BMP == 1
+#include "../../Codecs/CodecBMP/Include/CodecBMPFactory.h"
+#endif
 #if IMCODEC_BUILD_CODEC_JPG == 1
     #include "../../Codecs/CodecJPG/Include/CodecJPGFactory.h"
 #endif
@@ -39,6 +43,9 @@ namespace IMCodec
     bool EmbeddedPluginInstaller::InstallPlugins(ImageLoader* imageLoader)
     {
         // install codec by priority, first installed is with the higher priority.
+#if IMCODEC_BUILD_CODEC_BMP == 1
+        imageLoader->InstallPlugin(CodecBMPFactory::Create());
+#endif
 #if IMCODEC_BUILD_CODEC_PSD == 1
         imageLoader->InstallPlugin(CodecPSDFactory::Create());
 #endif

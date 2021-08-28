@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 
+if ( ${IMCODEC_BUILD_CODEC_BMP})
+    add_subdirectory(CodecBMP)
+endif()
 if ( ${IMCODEC_BUILD_CODEC_ICON})
     add_subdirectory(CodecIcon)
 endif()
