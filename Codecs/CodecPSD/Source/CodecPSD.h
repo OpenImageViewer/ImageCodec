@@ -25,7 +25,8 @@ namespace IMCodec
             if (status == psd_status_done)
             {
                 const uint32_t numChannels = 4;
-                size_t mergedImageSize = context->per_channel_length * numChannels;
+               // merged is always BGBRA8
+                size_t mergedImageSize = numChannels * context->width * context->height;
                 out_properties.fData.Allocate(mergedImageSize);
                 out_properties.fData.Write(reinterpret_cast<std::byte*>(context->merged_image_data), 0, mergedImageSize);
 
