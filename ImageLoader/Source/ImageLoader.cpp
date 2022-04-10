@@ -2,6 +2,7 @@
 #include "EmbeddedPluginInstaller.h"
 #include <LLUtils/StringUtility.h>
 #include <LLUtils/StopWatch.h>
+//#include <TinyEXIF.h>
 
 namespace IMCodec
 {
@@ -43,71 +44,59 @@ namespace IMCodec
         }
     }
 
-    bool ImageLoader::TryLoad(IImagePlugin* plugin, uint8_t* buffer, std::size_t size, VecImageSharedPtr& out_images) const
+    ImageResult ImageLoader::TryLoad(IImagePlugin* plugin, const std::byte* buffer, std::size_t size, ImageLoadFlags loadFlags, ImageSharedPtr& image) const
     {
-        VecImageDescriptors descriptors(1);
         LLUtils::StopWatch stopWatch(true);
-        
-        bool loaded = false;
-
-        if (plugin->GetPluginProperties().hasMultipleImages)
-        {
-            
-            loaded = plugin->LoadImages(buffer, size, descriptors);
-        }
-        else 
-        {
-            loaded = plugin->LoadImage(buffer, size, descriptors[0]);
-        }
-
+        ImageResult result = plugin->LoadMemoryImageFile(buffer, size, loadFlags, image);
         auto loadTime = stopWatch.GetElapsedTimeReal(LLUtils::StopWatch::TimeUnit::Milliseconds);
 
-        if (loaded == true)
+        if (result == ImageResult::Success)
         {
-            for (ImageDescriptor& imageDescriptor : descriptors)
-                if ((imageDescriptor.IsInitialized() == true)) // verify image descriptor is properly initialized
-                {
-                    imageDescriptor.fMetaData.LoadTime = loadTime;
-                    imageDescriptor.fMetaData.pluginUsed = plugin->GetPluginProperties().pluginDescription.c_str();
-                    out_images.push_back(std::make_shared<Image>(imageDescriptor));
-                }
-            
+            if ((image->IsValid() == true)) // verify image is properly initialized
+            {
+                auto& runtimeData = const_cast<ItemRuntimeData&>(image->GetRuntimeData());
+                runtimeData.loadTime = loadTime;
+                runtimeData.pluginUsed = plugin->GetPluginProperties().pluginDescription.c_str();
+            }
         }
-
-        return loaded;
+        return result;
     }
 
-    bool ImageLoader::Load(uint8_t* buffer, std::size_t size, char* extension, bool onlyRegisteredExtension, VecImageSharedPtr& out_images) const
+    ImageResult ImageLoader::Load(const std::byte* buffer
+        , std::size_t size
+        , const char* extensionHint
+        , ImageLoadFlags imageLoadFlags
+        , ImageLoaderFlags imageLoaderFlags
+        , ImageSharedPtr& image) const
     {
-       VecImageDescriptors imageDescriptors;
 
-       bool loaded = false;
+        ImageResult result = ImageResult::Fail;
 
-       IImagePlugin* choosenPlugin = nullptr;
+        IImagePlugin* choosenPlugin = nullptr;
 
-       if ( extension != nullptr)
-            choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower(LLUtils::StringUtility::ToWString(extension)));
+        if (extensionHint != nullptr)
+            choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower(LLUtils::StringUtility::ToWString(extensionHint)));
 
         if (choosenPlugin != nullptr)
-            loaded = TryLoad(choosenPlugin, buffer, size, out_images);
+            result = TryLoad(choosenPlugin, buffer, size,imageLoadFlags, image);
 
         
         // If image not loaded and allow to load using unregistred file extensions, iterate over all image plugins.
-        if (loaded == false && onlyRegisteredExtension == false)
+        if (result != ImageResult::Success && ( (imageLoaderFlags & ImageLoaderFlags::OnlyRegisteredExtension) == ImageLoaderFlags::None))
         {
             for (auto plugin : fListPlugins)
             {
                 // In case we try to a choosen plugin and it failed. don't try again.
                 if (plugin != choosenPlugin)
                 {
-                    loaded = TryLoad(plugin, buffer, size, out_images);
-                    if (loaded == true)
+                    result = TryLoad(plugin, buffer, size,imageLoadFlags, image);
+                    if (result == ImageResult::Success)
                         break;
                 }
             }
         }
 
-        return loaded;
+        return result;
     }
 
     std::wstring ImageLoader::GetKnownFileTypes() const

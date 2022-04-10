@@ -2,6 +2,7 @@
 
 #include <IImagePlugin.h>
 #include <FreeImage.h>
+#include <Image.h>
 
 namespace IMCodec
 {
@@ -13,19 +14,21 @@ namespace IMCodec
         {
             static PluginProperties pluginProperties =
             {
-                "FreeImage plugin",
+                L"FreeImage plugin",
                 "BMP;ICO;JPEG;JNG;KOALA;LBM;IFF;LBM;MNG;PBM;PBMRAW;PCD;PCX;PGM;PGMRAW;PNG;PPM;PPMRAW;RAS;TGA;TIFF;TIF;WBMP;PSD;CUT;XBM;XPM;DDS;GIF;HDR;FAXG3;SGI;EXR;J2K;JP2;PFM;PICT;RAW;WEBP;JXR;CUR"
                 };
             
             return pluginProperties;
         }
 
-        virtual bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             FIBITMAP* freeImageHandle;
-            bool opened = false;
+            ImageResult result = ImageResult::Success;
 
-            FIMEMORY* memStream = FreeImage_OpenMemory(const_cast<BYTE*>(buffer),static_cast<DWORD>(size));
+            using namespace IMCodec;
+
+            FIMEMORY* memStream = FreeImage_OpenMemory(reinterpret_cast<BYTE*>(const_cast<std::byte*>( buffer)),static_cast<DWORD>(size));
             FREE_IMAGE_FORMAT format =  FreeImage_GetFileTypeFromMemory(memStream, static_cast<int>(size));
             freeImageHandle = FreeImage_LoadFromMemory(format, memStream, 0);
             if (freeImageHandle && FreeImage_FlipVertical(freeImageHandle))
@@ -36,15 +39,17 @@ namespace IMCodec
 
                 const BITMAPINFOHEADER& header = imageInfo->bmiHeader;
 
-                out_properties.fProperties.Width = header.biWidth;
-                out_properties.fProperties.Height = header.biHeight;
-                out_properties.fProperties.RowPitchInBytes = FreeImage_GetPitch(freeImageHandle);
+                auto imageItem = std::make_shared<ImageItem>();
+                imageItem->itemType = ImageItemType::Image;
 
-                out_properties.fProperties.NumSubImages = 0;
+                imageItem->descriptor.width = header.biWidth;
+                imageItem->descriptor.height = header.biHeight;
+                imageItem->descriptor.rowPitchInBytes = FreeImage_GetPitch(freeImageHandle);
 
-                std::size_t imageSizeInMemory = header.biHeight * out_properties.fProperties.RowPitchInBytes;
-                out_properties.fData.Allocate(imageSizeInMemory);
-                out_properties.fData.Write(reinterpret_cast<std::byte*>(FreeImage_GetBits(freeImageHandle)), 0, imageSizeInMemory);
+                std::size_t imageSizeInMemory = header.biHeight * imageItem->descriptor.rowPitchInBytes;
+                
+                imageItem->data.Allocate(imageSizeInMemory);
+                imageItem->data.Write(reinterpret_cast<std::byte*>(FreeImage_GetBits(freeImageHandle)), 0, imageSizeInMemory);
 
 
                 switch (TexelFormat)
@@ -54,29 +59,29 @@ namespace IMCodec
                     switch (header.biBitCount)
                     {
                     case 8:
-                        out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_X8;
+                        imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_X8;
                         break;
                     case 32:
                         if (format == FIF_BMP)
                         {
                             // Hack: BMP isn't read with an alpha channel.
-                            uint32_t* line = (uint32_t*)out_properties.fData.data();
-                            for (uint32_t y = 0; y < out_properties.fProperties.Height; y++)
+                            uint32_t* line = (uint32_t*)imageItem->data.data();
+                            for (uint32_t y = 0; y < imageItem->descriptor.height; y++)
                             {
-                                for (uint32_t x = 0; x < out_properties.fProperties.Width; x++)
+                                for (uint32_t x = 0; x < imageItem->descriptor.width; x++)
                                     line[x] = line[x] | 0xFF000000;
 
-                                line = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(line) + out_properties.fProperties.RowPitchInBytes);
+                                line = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(line) + imageItem->descriptor.rowPitchInBytes);
 
                             }
                         }
-                        out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
+                        imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
                         break;
                     case 24:
-                        out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8;
+                        imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_B8_G8_R8;
                         break;
                     default:
-                        out_properties.fProperties.TexelFormatDecompressed = TexelFormat::UNKNOWN;
+                        imageItem->descriptor.texelFormatDecompressed = TexelFormat::UNKNOWN;
 
                     }
                 }
@@ -88,14 +93,16 @@ namespace IMCodec
 
                 if (freeImageHandle != nullptr)
                     FreeImage_Unload(freeImageHandle);
-                opened = true;
 
+                out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+
+                result = ImageResult::Success;
             }
 
             if (memStream != nullptr)
                 FreeImage_CloseMemory(memStream);
                 
-            return opened;
+            return result;
         }
     };
 }

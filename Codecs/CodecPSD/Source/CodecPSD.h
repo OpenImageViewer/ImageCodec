@@ -1,5 +1,5 @@
 #pragma once
-#include <IImagePlugin.h>
+#include <Image.h>
 #include <libpsd.h>
 
 namespace IMCodec
@@ -10,37 +10,42 @@ namespace IMCodec
     public:
         PluginProperties& GetPluginProperties() override
         {
-            static PluginProperties pluginProperties = { "psdlib codec","psd" };
+            static PluginProperties pluginProperties = { L"psdlib codec","psd" };
             return pluginProperties;
         }
 
-        bool LoadImage(const uint8_t* buffer, size_t size, ImageDescriptor& out_properties) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
-            bool success = false;
+            ImageResult result = ImageResult::Fail;
             psd_context * context = nullptr;
             psd_status status;
             status = psd_image_load_merged_from_memory(&context, 
-                reinterpret_cast<psd_char*>(const_cast<uint8_t*>(buffer)), size);
+                reinterpret_cast<psd_char*>(const_cast<std::byte*>(buffer)), size);
 
             if (status == psd_status_done)
             {
                 const uint32_t numChannels = 4;
                // merged is always BGBRA8
-                size_t mergedImageSize = numChannels * context->width * context->height;
-                out_properties.fData.Allocate(mergedImageSize);
-                out_properties.fData.Write(reinterpret_cast<std::byte*>(context->merged_image_data), 0, mergedImageSize);
 
-                out_properties.fProperties.NumSubImages = 0;
-                out_properties.fProperties.Width = context->width;
-                out_properties.fProperties.Height = context->height;
-                out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
-                out_properties.fProperties.RowPitchInBytes = numChannels * context->width;
+                auto imageItem = std::make_shared<ImageItem>();
+                
+                size_t mergedImageSize = numChannels * context->width * context->height;
+                imageItem->data.Allocate(mergedImageSize);
+                imageItem->data.Write(reinterpret_cast<std::byte*>(context->merged_image_data), 0, mergedImageSize);
+                imageItem->itemType = ImageItemType::Image;
+                
+                imageItem->descriptor.width = context->width;
+                imageItem->descriptor.height = context->height;
+                imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
+                imageItem->descriptor.rowPitchInBytes = numChannels * context->width;
+
+                out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
                 
                 psd_image_free(context);
-                success = true;
+                result = ImageResult::Success;
             }
 
-            return success;
+            return result;
         }
     };
  

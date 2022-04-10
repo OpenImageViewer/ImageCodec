@@ -1,6 +1,6 @@
 #pragma once
 
-#include <IImagePlugin.h>
+#include <Image.h>
 
 namespace IMCodec
 {
@@ -43,7 +43,7 @@ namespace IMCodec
     public:
         inline thread_local static bool sIsLoading = false;
 
-        CodecIcon(IImageLoader* imageLoader) : mPluginProperties({ "Builtin Icon codec","ico;icon;cur" , true}), fImageLoader(imageLoader)
+        CodecIcon(IImageLoader* imageLoader) : mPluginProperties({ L"Builtin Icon codec","ico;icon;cur"}), fImageLoader(imageLoader)
         {
             
         }
@@ -64,10 +64,11 @@ namespace IMCodec
             return value;
         }
 
-        virtual bool LoadImages(const uint8_t* buffer, std::size_t size, std::vector<ImageDescriptor>& out_vec_properties) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             using namespace std;
-            bool success = false;
+            using namespace IMCodec;
+            ImageResult result = ImageResult::Fail;
             try
             {  
                 if (size > sizeof(IcoDir))
@@ -76,16 +77,27 @@ namespace IMCodec
                     const uint8_t* baseAddress = reinterpret_cast<const uint8_t*>(icoFile);
                     
                     if (icoFile->icoDir.reserved != 0 ||  (icoFile->icoDir.type != 1 && icoFile->icoDir.type != 2))
-                        return false; // Not an Ico file 
+                        return ImageResult::Fail; // Not an Ico file 
 
                     
-                    uint16_t numImages = icoFile->icoDir.numImages;
+                    const uint16_t numImages = icoFile->icoDir.numImages;
+                    const bool isMultiImage = numImages > 1;
                     bool error = false;
-                    out_vec_properties.resize(numImages);
 
+                    if (isMultiImage)
+                    {
+                        auto imageItem = std::make_shared<ImageItem>();
+                        imageItem->itemType = ImageItemType::Container;
+                        out_image = std::make_shared<Image>(std::make_shared<ImageItem>(), ImageItemType::Image);
+                        out_image->SetNumSubImages(numImages);
+                    }
+ 
                     for (uint32_t i = 0; i < numImages; i++)
                     {
-                        auto& currentDescriptor = out_vec_properties[numImages - i - 1]; // Reverse order, so largest icon is first.
+                        ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
+                        imageItem->itemType = ImageItemType::Image;
+                 
+                        auto& currentDescriptor = imageItem->descriptor;
                         const IcoDirEntry* currentEntry = (&icoFile->entry)[i];
                         
                         const BITMAPINFOHEADER* bitmapInfo = reinterpret_cast<const BITMAPINFOHEADER*>(baseAddress + currentEntry->offsetData);
@@ -94,21 +106,20 @@ namespace IMCodec
                             if (bitmapInfo->biCompression != 0)
                                 LL_EXCEPTION_NOT_IMPLEMENT("Bitmap icons currently support only uncompressed images ");
 
-                            currentDescriptor.fProperties.Width = currentEntry->width != 0 ? currentEntry->width : 256;
-                            currentDescriptor.fProperties.Height = currentEntry->height != 0 ? currentEntry->height : 256;;
-                            currentDescriptor.fProperties.NumSubImages = 0;
-                            currentDescriptor.fProperties.RowPitchInBytes = bitmapInfo->biBitCount * currentDescriptor.fProperties.Width / CHAR_BIT ;
+                            currentDescriptor.width = currentEntry->width != 0 ? currentEntry->width : 256;
+                            currentDescriptor.height = currentEntry->height != 0 ? currentEntry->height : 256;;
+                            currentDescriptor.rowPitchInBytes = bitmapInfo->biBitCount * currentDescriptor.width / CHAR_BIT ;
                             
                             //Convert images to 32 bit to add transparency channel using the image mask.
-                            currentDescriptor.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_B8_G8_R8_A8;
-                            currentDescriptor.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8_A8;
-                            currentDescriptor.fProperties.RowPitchInBytes = 32 * currentDescriptor.fProperties.Width / CHAR_BIT;
-                            currentDescriptor.fData.Allocate(currentDescriptor.fProperties.Width * currentDescriptor.fProperties.Height * 4);
+                            currentDescriptor.texelFormatStorage = IMCodec::TexelFormat::I_B8_G8_R8_A8;
+                            currentDescriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8_A8;
+                            currentDescriptor.rowPitchInBytes = 32 * currentDescriptor.width / CHAR_BIT;
+                            imageItem->data.Allocate(currentDescriptor.width * currentDescriptor.height * 4);
 
                             const uint8_t* baseSourceAddress = reinterpret_cast<const uint8_t*>(bitmapInfo + 1);
-                            const size_t sourceRowPitch = ((bitmapInfo->biBitCount * currentDescriptor.fProperties.Width + 31) & ~31) >> 3;
-                            const size_t sourceRowPitchMask = (((MaskBitCount * currentDescriptor.fProperties.Width) + 31) & ~31) >> 3;
-                            const size_t masktartOffset = currentDescriptor.fProperties.Height * sourceRowPitch;
+                            const size_t sourceRowPitch = ((bitmapInfo->biBitCount * currentDescriptor.width + 31) & ~31) >> 3;
+                            const size_t sourceRowPitchMask = (((MaskBitCount * currentDescriptor.width) + 31) & ~31) >> 3;
+                            const size_t masktartOffset = currentDescriptor.height * sourceRowPitch;
 
                             switch (bitmapInfo->biBitCount)
                             {
@@ -124,18 +135,18 @@ namespace IMCodec
                                     LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not find mask data");
                                 }
 
-                                for (size_t line = 0; line < currentDescriptor.fProperties.Height; line++)
+                                for (size_t line = 0; line < currentDescriptor.height; line++)
                                 {
-                                    auto sourceLineOffset = (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitch;
-                                    auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitchMask;
-                                    auto destLineOffset = line * currentDescriptor.fProperties.RowPitchInBytes;
+                                    auto sourceLineOffset = (currentDescriptor.height - line - 1) * sourceRowPitch;
+                                    auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.height - line - 1) * sourceRowPitchMask;
+                                    auto destLineOffset = line * currentDescriptor.rowPitchInBytes;
 
-                                    for (size_t x = 0; x < currentDescriptor.fProperties.Width; x++)
+                                    for (size_t x = 0; x < currentDescriptor.width; x++)
                                     {
                                         uint8_t pixelIndex = GetValue(bitmapInfo->biBitCount, baseSourceAddress + sourceLineOffset, x);
                                         uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
                                         uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | colorTable[pixelIndex];
-                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.data()) + destLineOffset) + x;
+                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset) + x;
                                         *currentpixel = color;
                                     }
                                 }
@@ -148,13 +159,13 @@ namespace IMCodec
                                     LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not find mask data");
                                 }
 
-                                for (size_t line = 0; line < currentDescriptor.fProperties.Height; line++)
+                                for (size_t line = 0; line < currentDescriptor.height; line++)
                                 {
-                                    auto sourceLineOffset = (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitch;
-                                    auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.fProperties.Height - line - 1) * sourceRowPitchMask;
-                                    auto destLineOffset = line * currentDescriptor.fProperties.RowPitchInBytes;
+                                    auto sourceLineOffset = (currentDescriptor.height - line - 1) * sourceRowPitch;
+                                    auto SourceLineMaskOffset = masktartOffset + (currentDescriptor.height - line - 1) * sourceRowPitchMask;
+                                    auto destLineOffset = line * currentDescriptor.rowPitchInBytes;
 
-                                    for (size_t x = 0; x < currentDescriptor.fProperties.Width; x++)
+                                    for (size_t x = 0; x < currentDescriptor.width; x++)
                                     {
 #pragma pack(push,1)
                                         struct Color24
@@ -172,7 +183,7 @@ namespace IMCodec
                                         Color24 color24 =  *reinterpret_cast<const Color24*>(baseSourceAddress + sourceLineOffset + x * sizeof(Color24));
                                         uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
                                         uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | color24;
-                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(currentDescriptor.fData.data()) + destLineOffset) + x;
+                                        uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset) + x;
                                         *currentpixel = color;
                                     }
                                 }
@@ -180,11 +191,11 @@ namespace IMCodec
 
                                 break;
                             case 32:
-                                for (size_t line = 0; line < currentDescriptor.fProperties.Height; line++)
+                                for (size_t line = 0; line < currentDescriptor.height; line++)
                                 {
-                                    auto sourceOffset = (currentDescriptor.fProperties.Height - line - 1) * currentDescriptor.fProperties.RowPitchInBytes;
-                                    auto destoffset = line * currentDescriptor.fProperties.RowPitchInBytes;
-                                    currentDescriptor.fData.Write(reinterpret_cast<const std::byte*>(baseSourceAddress + sourceOffset), destoffset, currentDescriptor.fProperties.RowPitchInBytes);
+                                    auto sourceOffset = (currentDescriptor.height - line - 1) * currentDescriptor.rowPitchInBytes;
+                                    auto destoffset = line * currentDescriptor.rowPitchInBytes;
+                                    imageItem->data.Write(reinterpret_cast<const std::byte*>(baseSourceAddress + sourceOffset), destoffset, currentDescriptor.rowPitchInBytes);
                                 }
                                 break;
 
@@ -196,12 +207,13 @@ namespace IMCodec
                         }
                         else if (sIsLoading == false)
                         {
-                            IMCodec::VecImageSharedPtr image;
+                            // if a PNG icon
+                            ImageSharedPtr pngImage;
                             sIsLoading = true;
-                            if (fImageLoader->Load(const_cast<uint8_t*>(baseAddress + currentEntry->offsetData), currentEntry->imageDataSize, nullptr, false, image) == true)
+                            if (fImageLoader->Load(reinterpret_cast<const std::byte*>(baseAddress + currentEntry->offsetData), currentEntry->imageDataSize, nullptr,
+                                ImageLoadFlags::None,ImageLoaderFlags::None, pngImage) == ImageResult::Success)
                             {
-                                currentDescriptor = image.at(0)->GetDescriptor();
-
+                                imageItem = pngImage->GetImageItem();
                             }
                             else
                             {
@@ -215,30 +227,32 @@ namespace IMCodec
                         {
                             error = true; // recursive call
                         }
+
+                        if (!error)
+                        {
+                            if (isMultiImage)
+                            {
+                                out_image->SetSubImage(i, std::make_shared<Image>(imageItem, ImageItemType::Pages));
+                            }
+                            else
+                            {
+                                out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                            }
+                        }
                    
                     }
-
-                    success = !error;
-                    out_vec_properties[0].fProperties.NumSubImages = numImages > 1 ?  numImages : 0;
+                    result = error ? ImageResult::Fail : ImageResult::Success;
                 }
             }
             catch (...)
             {
                 sIsLoading = false;
-                success = false;
+                result = ImageResult::Fail;
             }
 
             
             
-            return success;
-        }
-
-
-        //Base abstract methods
-        bool LoadImage([[maybe_unused]] const uint8_t* buffer, [[maybe_unused]] std::size_t size, [[maybe_unused]] ImageDescriptor& out_properties) override
-        {
-            return false;
-         
+            return result;
         }
     };
 }

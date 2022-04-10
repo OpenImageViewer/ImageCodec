@@ -1,5 +1,6 @@
 #pragma once
 #include "IImagePlugin.h"
+#include "Image.h"
 #include <unordered_map>
 #include <chrono>
 #include <vector>
@@ -14,11 +15,16 @@ namespace IMCodec
         MapStringListPlugin fMapPlugins;
         ListPlugin fListPlugins;
         IImagePlugin* GetFirstPlugin(const std::wstring& hint) const;
-        bool TryLoad(IImagePlugin* plugin, uint8_t* buffer, std::size_t size, VecImageSharedPtr& out_images) const;
+        ImageResult TryLoad(IImagePlugin* plugin, const std::byte* buffer, std::size_t size, ImageLoadFlags loadFlags, ImageSharedPtr& image) const;
 
     public: // const methods
         std::wstring GetKnownFileTypes() const;
-        bool Load(uint8_t* buffer, std::size_t size, char* extension, bool onlyRegisteredExtension , VecImageSharedPtr& out_images) const;
+        ImageResult Load(const std::byte* buffer
+            , std::size_t size
+            , const char* extensionHint
+            , ImageLoadFlags imageLoadFlags
+            , ImageLoaderFlags imageLoaderFlags
+            , ImageSharedPtr& image) const override;
         
     public: // methods
         ImageLoader();

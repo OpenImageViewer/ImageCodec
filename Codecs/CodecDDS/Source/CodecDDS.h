@@ -1,6 +1,9 @@
 #pragma once
 
 #include <IImagePlugin.h>
+#include <Image.h>
+#include <ImageItem.h>
+#include <LLUtils/Buffer.h>
 #include "nv_dds.h"
 #include "s3tc.h"
 
@@ -9,10 +12,10 @@ namespace IMCodec
     class CodecDDS : public IImagePlugin
     {
     private:
-            PluginProperties mPluginProperties;
+        PluginProperties mPluginProperties;
     public:
 
-        CodecDDS() : mPluginProperties({ "NV_DDS image codec","dds" , true})
+        CodecDDS() : mPluginProperties({ L"NV_DDS image codec","dds"})
         {
             
         }
@@ -23,15 +26,15 @@ namespace IMCodec
         }
 
 
-        void LoadSurface(bool isCompressed , unsigned storageFormat, const nv_dds::CSurface& surface , TexelFormat format, ImageDescriptor& out_properties)
+        void LoadSurface(bool isCompressed , unsigned storageFormat, const nv_dds::CSurface& surface , TexelFormat format, ImageItem& item)
         {
             LLUtils::Buffer decompressedBuffer;
 
-            const uint32_t decompressedTexelSize = GetTexelFormatSize(format) / 8;
+            const uint32_t decompressedTexelSize = GetTexelFormatSize(format) / CHAR_BIT;
             if (isCompressed)
             {
 
-                decompressedBuffer.Allocate(decompressedTexelSize * LLUtils::Utility::Align<size_t>( surface.get_width(),4) * LLUtils::Utility::Align<size_t>(surface.get_height(),4));
+                decompressedBuffer.Allocate(decompressedTexelSize * LLUtils::Utility::Align<size_t>( surface.get_width(), 4) * LLUtils::Utility::Align<size_t>(surface.get_height(), 4));
 
                 switch (storageFormat)
                 {
@@ -53,26 +56,24 @@ namespace IMCodec
             {
                 //Not compressed, copy as is.
                 decompressedBuffer.Allocate(surface.get_size());
-                decompressedBuffer.Write(reinterpret_cast<std::byte*>(static_cast<uint8_t*>(surface)), 0, surface.get_size());
+                decompressedBuffer.Write(reinterpret_cast<const std::byte*>(static_cast<uint8_t*>(surface)), 0, surface.get_size());
             }
 
-
-
-
-            out_properties.fProperties.Width = surface.get_width();
-            out_properties.fProperties.Height = surface.get_height();
-            out_properties.fProperties.TexelFormatDecompressed = format;
-            out_properties.fData = std::move(decompressedBuffer);
+            item.descriptor.texelFormatDecompressed = format;
+            item.descriptor.width = surface.get_width();
+            item.descriptor.height = surface.get_height();
+            item.descriptor.texelFormatDecompressed = format;
+            item.data = std::move(decompressedBuffer);
 
             //TODO: chech if need to extract row pitch from DDS.
-            out_properties.fProperties.RowPitchInBytes = surface.get_width() * decompressedTexelSize;
+            item.descriptor.rowPitchInBytes = surface.get_width() * decompressedTexelSize;
         }
-
-        virtual bool LoadImages(const uint8_t* buffer, std::size_t size, std::vector<ImageDescriptor>& out_vec_properties) override
+        
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             using namespace std;
             using namespace nv_dds;
-            bool success = false;
+            ImageResult result = ImageResult::Fail;
 
             class membuf : public std::streambuf
             {
@@ -84,16 +85,14 @@ namespace IMCodec
             };
 
 
-            uint8_t* buf = const_cast<uint8_t*>(buffer);
+            std::byte* buf = const_cast<std::byte*>(buffer);
             membuf sbuf(reinterpret_cast<char*>(buf), reinterpret_cast<char*>(buf + size));
 
             CDDSImage image;
             try
             {
-                
                 std::istream tmpBuf(&sbuf);
                 image.load(tmpBuf, false);
-                out_vec_properties.resize(image.get_num_mipmaps() + 1);
 
                 unsigned format = image.get_format();
                 TexelFormat texelFormat;
@@ -130,26 +129,24 @@ namespace IMCodec
                     break;
                 }
 
-
-                LoadSurface(image.is_compressed(), format, image.get_surface(), texelFormat, out_vec_properties[0]);
-                
-                out_vec_properties[0].fProperties.NumSubImages = static_cast<uint32_t>(std::max<int>(0, image.get_num_mipmaps()));
-                out_vec_properties[0].fProperties.TexelFormatDecompressed = texelFormat;
-                
+                auto firstImageItem = std::make_shared<ImageItem>();
+                LoadSurface(image.is_compressed(), format, image.get_surface(), texelFormat, *firstImageItem);
+                firstImageItem->descriptor.texelFormatDecompressed = texelFormat;
+                firstImageItem->itemType = ImageItemType::Image;
+                out_image = std::make_shared<Image>(firstImageItem, ImageItemType::Mipmap);
+                out_image->SetNumSubImages(image.get_num_mipmaps());
 
                 
                 for (unsigned int i = 0; i < image.get_num_mipmaps(); i++)
                 {
-                    ImageDescriptor& out_properties = out_vec_properties[i + 1];
-                    memset(&out_properties, 0, sizeof(ImageDescriptor));
                     const nv_dds::CSurface& surface = image.get_mipmap(i);
-
-                    LoadSurface(image.is_compressed(), format, surface, texelFormat, out_properties);
-                    out_properties.fProperties.TexelFormatDecompressed = texelFormat;
+                    auto imageItem = std::make_shared<ImageItem>();
+                    LoadSurface(image.is_compressed(), format, surface, texelFormat, *imageItem);
+                    imageItem->descriptor.texelFormatDecompressed = texelFormat;
+                    out_image->SetSubImage(i, std::make_shared<Image>(imageItem,ImageItemType::Mipmap));
                 }
                 
-                success = true;
-
+                result = ImageResult::Success;
             }
 
             catch (...)
@@ -157,67 +154,68 @@ namespace IMCodec
 
             }
 
-            return success;
+            return result;
         }
+       
 
 
-        //Base abstract methods
-        bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
-        {
-            using namespace std;
-            using namespace nv_dds;
-            bool success = false;
-            
-            class membuf : public std::streambuf
-            {
-            public:
-                membuf(char* begin, char* end) {
-                    this->setg(begin, begin, end);
-                }
-            };
+        ////Base abstract methods
+        //bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
+        //{
+        //    using namespace std;
+        //    using namespace nv_dds;
+        //    bool success = false;
+        //    
+        //    class membuf : public std::streambuf
+        //    {
+        //    public:
+        //        membuf(char* begin, char* end) {
+        //            this->setg(begin, begin, end);
+        //        }
+        //    };
 
-            uint8_t* buf = const_cast<uint8_t*>(buffer);
-            membuf sbuf(reinterpret_cast<char*>(buf), reinterpret_cast<char*>(buf + size));
+        //    uint8_t* buf = const_cast<uint8_t*>(buffer);
+        //    membuf sbuf(reinterpret_cast<char*>(buf), reinterpret_cast<char*>(buf + size));
 
-            CDDSImage image;
-            try
-            {
-                istream bufStream = istream(&sbuf);
-                image.load(bufStream, false);
-                out_properties.fProperties.Width = image.get_width();
-                out_properties.fProperties.Height = image.get_height();
-                out_properties.fProperties.NumSubImages = image.get_num_mipmaps();
-                out_properties.fData.Allocate(image.get_size());
-                out_properties.fData.Write(reinterpret_cast<std::byte*>(static_cast<uint8_t*>(image)), 0, image.get_size());
+        //    CDDSImage image;
+        //    try
+        //    {
+        //        istream bufStream = istream(&sbuf);
+        //        image.load(bufStream, false);
+        //        out_properties.fProperties.Width = image.get_width();
+        //        out_properties.fProperties.Height = image.get_height();
+        //        out_properties.fProperties.NumSubImages = image.get_num_mipmaps();
+        //        out_properties.fData.Allocate(image.get_size());
+        //        out_properties.fData.Write(reinterpret_cast<std::byte*>(static_cast<uint8_t*>(image)), 0, image.get_size());
 
-                unsigned format = image.get_format();
-                switch (format)
-                {
-                case GL_BGRA_EXT:
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
-                    break;
-                case GL_BGR_EXT:
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8;
-                    break;
-                case GL_RGB:
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8;
-                    break;
-                case GL_RGBA:
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
-                    break;
-                }
-                //TODO: chech if need to extract row pitch from DDS.
-                out_properties.fProperties.RowPitchInBytes = image.get_width() * GetTexelFormatSize(out_properties.fProperties.TexelFormatDecompressed) / 8;
-                success = true;
+        //        unsigned format = image.get_format();
+        //        switch (format)
+        //        {
+        //        case GL_BGRA_EXT:
+        //            out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
+        //            break;
+        //        case GL_BGR_EXT:
+        //            out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_B8_G8_R8;
+        //            break;
+        //        case GL_RGB:
+        //            out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8;
+        //            break;
+        //        case GL_RGBA:
+        //            out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
+        //            break;
+        //        }
+        //        //TODO: chech if need to extract row pitch from DDS.
+        //        out_properties.fProperties.RowPitchInBytes = image.get_width() * GetTexelFormatSize(out_properties.fProperties.TexelFormatDecompressed) / 8;
+        //        success = true;
 
-            }
+        //    }
 
-            catch(...)
-            {
-              
-            }
+        //    catch(...)
+        //    {
+        //      
+        //    }
 
-            return success;
-        }
+        //    return success;
+        //}
     };
 }

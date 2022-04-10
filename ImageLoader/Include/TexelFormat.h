@@ -5,7 +5,6 @@
 
 namespace IMCodec
 {
-
     enum class ChannelSemantic
     {
           None
@@ -154,7 +153,7 @@ namespace IMCodec
             LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, " index out of bounds.");
     }
 
-    LLUTILS_FORCE_INLINE uint8_t GetTexelFormatSize(TexelFormat format)
+    LLUTILS_FORCE_INLINE ChannelWidth GetTexelFormatSize(TexelFormat format)
     {
         return GetTexelInfo(format).texelSize;
     }

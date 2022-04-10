@@ -1,6 +1,6 @@
 #pragma once
 
-#include <IImagePlugin.h>
+#include <Image.h>
 #include <turbojpeg.h>
 
 namespace IMCodec
@@ -14,14 +14,14 @@ namespace IMCodec
     public:
         PluginProperties& GetPluginProperties() override
         {
-            static PluginProperties pluginProperties = { "Jpeg plugin codec","jpg;jpeg" };
+            static PluginProperties pluginProperties = { L"Jpeg plugin codec","jpg;jpeg" };
             return pluginProperties;
         }
 
-        virtual bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             static tjhandle ftjHandle = tjInitDecompress();
-            bool success = false;
+            ImageResult result = ImageResult::Fail;
         
             int width = 0;
             int height = 0;
@@ -29,23 +29,24 @@ namespace IMCodec
             int bytesPerPixel = 4;
             int subsamp;
             unsigned long jpegSize = static_cast<unsigned long>(size);
-            if (tjDecompressHeader2(ftjHandle,const_cast<unsigned char*>( buffer), jpegSize, &width, &height, &subsamp) != -1)
+            if (tjDecompressHeader2(ftjHandle,reinterpret_cast<unsigned char*>(const_cast<std::byte*>( buffer)), jpegSize, &width, &height, &subsamp) != -1)
             {
                 size_t imageDataSize = width * height * bytesPerPixel;
-                out_properties.fData.Allocate(imageDataSize);
+                auto imageItem = std::make_shared<ImageItem>();
+                imageItem->itemType = ImageItemType::Image;
+                imageItem->data.Allocate(imageDataSize);
 
-                if (tjDecompress2(ftjHandle, const_cast< uint8_t*>(reinterpret_cast<const uint8_t*>( buffer)), jpegSize, reinterpret_cast<unsigned char*>( out_properties.fData.data()), width, width * bytesPerPixel, height, TJPF_RGBA, 0) != -1)
+                if (tjDecompress2(ftjHandle, const_cast< uint8_t*>(reinterpret_cast<const uint8_t*>( buffer)), jpegSize, reinterpret_cast<unsigned char*>(imageItem->data.data()), width, width * bytesPerPixel, height, TJPF_RGBA, 0) != -1)
                 {
-                    out_properties.fProperties.TexelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
-                    out_properties.fProperties.Width = width;
-                    out_properties.fProperties.Height = height;
-                    out_properties.fProperties.RowPitchInBytes = bytesPerPixel * width;
-                    out_properties.fProperties.NumSubImages = 0;
-
-                    success = true;
+                    imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
+                    imageItem->descriptor.width = width;
+                    imageItem->descriptor.height = height;
+                    imageItem->descriptor.rowPitchInBytes = bytesPerPixel * width;
+                    out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                    result = ImageResult::Success;
                 }
             }
-            return success;
+            return result;
         }
     };
 }

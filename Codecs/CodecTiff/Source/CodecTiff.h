@@ -1,6 +1,6 @@
 #pragma once
 
-#include <IImagePlugin.h>
+#include <Image.h>
 
 #include <tiffio.h>
 #include <tiffio.hxx>
@@ -16,7 +16,7 @@ namespace IMCodec
         PluginProperties mPluginProperties;
     public:
 
-        CodecTiff() : mPluginProperties({ "LibTiff image codec","tif;tiff" })
+        CodecTiff() : mPluginProperties({ L"LibTiff image codec","tif;tiff" })
         {
 
         }
@@ -85,16 +85,20 @@ namespace IMCodec
             return texelFormat;
         }
         //Base abstract methods
-        bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             using namespace std;
 
-            bool success = false;
-            TiffFile tifFile(buffer, size);
+            ImageResult result = ImageResult::Fail;
+
+            TiffFile tifFile(reinterpret_cast<const uint8_t*>(buffer), size);
             TIFF* tiff = tifFile.GetTiff();
 
             if (tiff != nullptr)
             {
+                auto imageItem = std::make_shared<ImageItem>();
+                imageItem->itemType = ImageItemType::Image;
+
                 uint16_t sampleFormat = 0;
 
                 uint32 width, height;
@@ -146,16 +150,16 @@ namespace IMCodec
                     texelFormat = TexelFormat::I_R8_G8_B8_A8;
                     //override target row pitch - always 32bpp
                     rowPitch = width * 4;
-                    out_properties.fData.Allocate(height * rowPitch);
+                    imageItem->data.Allocate(height * rowPitch);
                     
-                    TIFFReadRGBAImage(tiff, width, height, reinterpret_cast<uint32*>(out_properties.fData.data()));
+                    TIFFReadRGBAImage(tiff, width, height, reinterpret_cast<uint32*>(imageItem->data.data()));
                     break;
                 case PHOTOMETRIC_MINISWHITE:
                 case PHOTOMETRIC_MINISBLACK:
                         texelFormat = GetTexelFormat(sampleFormat, bitsPerSample);
-                        out_properties.fData.Allocate(height * rowPitch);
+                        imageItem->data.Allocate(height * rowPitch);
 
-                        uint8_t* currensPos = reinterpret_cast<uint8_t*>(out_properties.fData.data());
+                        uint8_t* currensPos = reinterpret_cast<uint8_t*>(imageItem->data.data());
 
                         if (stripSize != rowPitch * rowsPerStrip)
                             LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported strip size.");
@@ -171,12 +175,13 @@ namespace IMCodec
                     break;
                 }
 
-                success = true;
-                out_properties.fProperties.Width = width;
-                out_properties.fProperties.Height = height;
-                out_properties.fProperties.NumSubImages = 0;
-                out_properties.fProperties.TexelFormatDecompressed = texelFormat;
-                out_properties.fProperties.RowPitchInBytes = rowPitch;
+                
+                imageItem->descriptor.width = width;
+                imageItem->descriptor.height = height;
+                imageItem->descriptor.texelFormatDecompressed = texelFormat;
+                imageItem->descriptor.rowPitchInBytes = rowPitch;
+
+                
 
 				// Two or more image channels are interleaved
                 // Extract the first one, currently discard the others.
@@ -196,15 +201,18 @@ namespace IMCodec
                     for (size_t i = 0; i < samplesPerSingleCHannel; i++)
                     {
                         const size_t sourceIndex = i * samplesPerPixel * bytesPerSample;
-                        memcpy(reinterpret_cast<uint8_t*>(image.data()) + destIndex, reinterpret_cast<uint8_t*>(out_properties.fData.data()) + sourceIndex, bytesPerSample);
+                        memcpy(reinterpret_cast<uint8_t*>(image.data()) + destIndex, reinterpret_cast<uint8_t*>(imageItem->data.data()) + sourceIndex, bytesPerSample);
                         destIndex += bytesPerSample;
                     }
-                    out_properties.fData = std::move(image);
-                    out_properties.fProperties.RowPitchInBytes /= samplesPerPixel;
-                }
+                    imageItem->data= std::move(image);
+                    imageItem->descriptor.rowPitchInBytes /= samplesPerPixel;
 
+
+                }
+                result = ImageResult::Success;
+                out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
             }
-            return success;
+            return result;
         }
     };
 }

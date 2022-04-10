@@ -9,4 +9,4 @@ file(GLOB_RECURSE sourceFiles
 set(TargetName CodecPSD)
 add_library (${TargetName} ${sourceFiles} )
 include_directories(d:/DevelopmentExternal/libpsd/include)
-target_link_libraries(${TargetName} d:/DevelopmentExternal/libpsd/build/libPSDLibVC142/x64/Debug/libPSDLib.lib)
+target_link_libraries(${TargetName} d:/DevelopmentExternal/libpsd/build/libPSDLibVC142/x64/Release/libPSDLib.lib)

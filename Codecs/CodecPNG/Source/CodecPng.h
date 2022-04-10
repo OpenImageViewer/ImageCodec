@@ -1,6 +1,6 @@
 #pragma once
 
-#include <IImagePlugin.h>
+#include <Image.h>
 #include <png.h>
 #include <LLUtils/BitFlags.h>
 
@@ -31,17 +31,17 @@ namespace IMCodec
 
         PluginProperties& GetPluginProperties() override
         {
-            static PluginProperties pluginProperties = { "PNG plugin codec","png" };
+            static PluginProperties pluginProperties = { L"PNG plugin codec","png" };
             return pluginProperties;
         }
 
         //Base abstract methods
-        virtual bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             using namespace std;
+            using namespace IMCodec;
             
-            bool success = false;
-
+            ImageResult result = ImageResult::Fail;
             png_image image; /* The control structure used by libpng */
 
             /* Initialize the 'png_image' structure. */
@@ -49,14 +49,15 @@ namespace IMCodec
             image.version = PNG_IMAGE_VERSION;
             if (png_image_begin_read_from_memory(&image, buffer,size) != 0)
             {
-                
+                auto imageItem = std::make_shared<ImageItem>();
+                imageItem->itemType = ImageItemType::Image;
                 //Assign image properties
                 const auto sizeofChannel = static_cast<unsigned int>(PNG_IMAGE_PIXEL_COMPONENT_SIZE(image.format));
                 const auto rowPitch = PNG_IMAGE_ROW_STRIDE(image) * sizeofChannel;
-
-                out_properties.fProperties.RowPitchInBytes = rowPitch;
-                out_properties.fProperties.Width = image.width;
-                out_properties.fProperties.Height = image.height;
+                
+                imageItem->descriptor.rowPitchInBytes = rowPitch;
+                imageItem->descriptor.width = image.width;
+                imageItem->descriptor.height = image.height;
 
                 int numChannles = 0;
 
@@ -98,7 +99,7 @@ namespace IMCodec
                  
                 uint8_t const colormapWidth = 1;
 
-                out_properties.fProperties.TexelFormatDecompressed = textFormat;
+                imageItem->descriptor.texelFormatDecompressed = textFormat;
 
 
                  LLUtils::BitFlags<PngFormatFlags> formatFlags( static_cast<PngFormatFlags>(image.format));
@@ -107,17 +108,14 @@ namespace IMCodec
                  if (formatFlags.test(PngFormatFlags::ColorMap))
                  {
                      colorMap.Allocate(numChannles * colormapWidth * image.colormap_entries);
-                     out_properties.fProperties.RowPitchInBytes = numChannles * image.width;
+                     imageItem->descriptor.rowPitchInBytes = numChannles * image.width;
                  }
 
-                    
-                out_properties.fProperties.NumSubImages = 0;
-
                 //read buffer
-                out_properties.fData.Allocate(PNG_IMAGE_SIZE(image));
+                 imageItem->data.Allocate(PNG_IMAGE_SIZE(image));
 
-                if (out_properties.fData.data() != nullptr &&
-                    png_image_finish_read (&image, nullptr/*background*/, out_properties.fData.data(),
+                if (imageItem->data.data() != nullptr &&
+                    png_image_finish_read (&image, nullptr/*background*/, imageItem->data.data(),
                         PNG_IMAGE_ROW_STRIDE(image), colorMap.data()) != 0)
                 {
 
@@ -129,7 +127,7 @@ namespace IMCodec
                         
                         for (size_t pixelIndex = 0; pixelIndex < image.width * image.height; pixelIndex++)
                         {
-                            size_t colorIndex = ((uint8_t*)(out_properties.fData.data()))[pixelIndex];
+                            size_t colorIndex = ((uint8_t*)(imageItem->data.data()))[pixelIndex];
 
                             size_t sourcePos = colorIndex * pixelSize;
                             size_t destPos = pixelIndex * pixelSize;
@@ -137,13 +135,15 @@ namespace IMCodec
                             memcpy( reinterpret_cast<uint8_t*>(unmappedBuuffer.data()) + destPos
                                 , reinterpret_cast<uint8_t*>(colorMap.data()) + sourcePos, pixelSize);
                         }
-                        out_properties.fData = std::move(unmappedBuuffer);
+                        
+                        imageItem->data = std::move(unmappedBuuffer);
                     }
 
-                    success = true;
+                    out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                    result = ImageResult::Success;
                 }
             }
-            return success;
+            return result;
         }
     };
 }

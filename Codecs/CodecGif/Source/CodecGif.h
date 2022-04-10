@@ -3,12 +3,13 @@
 #include <assert.h>
 #include <IImagePlugin.h>
 #include <gif_lib.h>
+#include <Image.h>
 namespace IMCodec
 {
 
     struct GifReadContext
     {
-        const uint8_t* buffer;
+        const std::byte* buffer;
         size_t bufferSize;
         size_t pos;
     };
@@ -31,74 +32,200 @@ namespace IMCodec
     class CodecGif : public IImagePlugin
     {
     private:
-        PluginProperties mPluginProperties = { "GifLib image codec","gif" };
+        PluginProperties mPluginProperties = { L"GifLib image codec","gif" };
     public:
         PluginProperties& GetPluginProperties() override
         {
             return mPluginProperties;
         }
 
-        //Base abstract methods
-        bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
-        {
-            int e;
-            GifReadContext context = {buffer, size, 0};
 
-            GifFileType* gif = DGifOpen((void*)&context,&ReadGifBuffer, &e);
+        struct FrameData
+        {
+            GraphicsControlBlock gcb;
+            GifImageDesc imagedesc;
+        };
+
+        
+
+
+        FrameData GetFrameData(SavedImage* gifImage)
+        {
+            FrameData frameData{};
+            GraphicsControlBlock gcb;
             
+            frameData.imagedesc = gifImage->ImageDesc;
+
+            for (int i = 0; i < gifImage->ExtensionBlockCount; i++)
+            {
+                const ExtensionBlock& eb = gifImage->ExtensionBlocks[i];
+                switch (eb.Function)
+                {
+                case CONTINUE_EXT_FUNC_CODE:    /* continuation subblock */
+                    break;
+                case COMMENT_EXT_FUNC_CODE:    /* comment */
+                    break;
+                case GRAPHICS_EXT_FUNC_CODE:    /* graphics control (GIF89) */
+                    if (DGifExtensionToGCB(eb.ByteCount, eb.Bytes, &gcb) == GIF_OK)
+                        frameData.gcb = gcb;
+                    break;
+                case PLAINTEXT_EXT_FUNC_CODE:    /* plaintext */
+                    break;
+                case APPLICATION_EXT_FUNC_CODE:    /* application block */
+                    break;
+                }
+
+            }
+            return frameData;
+        }
+
+        LLUtils::Buffer GetFrameBuffer(const SavedImage* image, const FrameData& frameData, const ColorMapObject* SColorMap)
+        {
+
+            const auto colorMap = image->ImageDesc.ColorMap != nullptr ? image->ImageDesc.ColorMap : SColorMap;
+            LLUtils::Buffer frameBuffer(image->ImageDesc.Height * image->ImageDesc.Width * 4);
+            for (GifWord y = 0; y < image->ImageDesc.Height; y++)
+                for (GifWord x = 0; x < image->ImageDesc.Width; x++)
+                {
+                    const uint32_t bufPos = (y * image->ImageDesc.Width) + x;
+                    int idx = image->RasterBits[bufPos];
+                    unsigned long alpha = idx == frameData.gcb.TransparentColor ? 0 : 0xff;
+                    GifColorType colorType = colorMap->Colors[idx];
+                    const uint32_t RGBACOLOR = (alpha << 24) | (colorType.Blue << 16) | (colorType.Green << 8) | colorType.Red;
+                    ((uint32_t*)frameBuffer.data())[bufPos] = RGBACOLOR;
+
+                }
+            return frameBuffer;
+        }
+        
+        std::vector<FrameData> GetFramesData(GifFileType* gif)
+        {
+            
+            const auto numFrames = gif->ImageCount;
+            std::vector<FrameData> framesData(numFrames);
+            for (auto frameNumber = 0; frameNumber < numFrames; frameNumber++)
+            {
+                auto currentImage = gif->SavedImages + frameNumber;
+                framesData.at(frameNumber) = GetFrameData(currentImage);
+            }
+
+            return framesData;
+        }
+
+        std::vector<LLUtils::Buffer> BakeGifFrames(GifFileType* gif, std::vector<FrameData> framesData)
+        {
+            const auto numBuffers = gif->ImageCount;
+            const auto bpp = gif->SColorResolution;
+
+            if (bpp > 8)
+                LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "unsupported gif type");
+
+            std::vector<LLUtils::Buffer> buffers(numBuffers);
+
+            for (auto i = 0; i < numBuffers; i++)
+            {
+                auto currentImage = gif->SavedImages + i;
+                buffers.at(i) = GetFrameBuffer(currentImage, framesData.at(i), gif->SColorMap);
+            }
+
+            LLUtils::Buffer compositeImage(gif->SHeight * gif->SWidth * 4);
+
+            for (auto i = 0; i < numBuffers; i++)
+            {
+                const auto& frameData = framesData.at(i);
+                auto& currentBuffer = buffers.at(i);
+
+                switch (frameData.gcb.DisposalMode)
+                {
+                case DISPOSAL_UNSPECIFIED:
+                    break;
+                case DISPOSE_DO_NOT:
+                    for (auto pixelIndex = 0; pixelIndex < frameData.imagedesc.Width * frameData.imagedesc.Height; pixelIndex++)
+                    {
+                        const auto& sourceColor = reinterpret_cast<const uint32_t*>(currentBuffer.data())[pixelIndex];
+                        auto& targetColor = reinterpret_cast<uint32_t*>(compositeImage.data())[pixelIndex];
+                        const int alpha = sourceColor >> 24;
+                        if (alpha > 0 )
+                            targetColor = sourceColor;
+                    }
+
+                    currentBuffer = compositeImage.Clone();
+
+                    break;
+                case DISPOSE_BACKGROUND:   
+                    break;
+                case DISPOSE_PREVIOUS:
+                    break;
+                }
+                
+            }
+
+            return buffers;
+        }
+
+        //Base abstract methods
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        {
+            ImageResult result = ImageResult::Fail;
+            int error;
+            GifReadContext context{ buffer, size, 0 };
+
+            GifFileType* gif = DGifOpen((void*)&context, &ReadGifBuffer, &error);
+
             if (gif != nullptr && DGifSlurp(gif) == GIF_OK)
             {
                 SavedImage* firstImage = gif->SavedImages;
-                GraphicsControlBlock gcb;
 
-                int transparentColor = -1;
+                using namespace IMCodec;
+                
+                ImageItemType subItemType = ImageItemType::Unknown;
+                
+                auto isMultiImage = gif->ImageCount > 1;
 
-                for (int i = 0; i < firstImage->ExtensionBlockCount; i++)
+                if (isMultiImage)
                 {
-                    const ExtensionBlock& eb = firstImage->ExtensionBlocks[i];
-                    switch (eb.Function)
-                    {
-                        case CONTINUE_EXT_FUNC_CODE    :    /* continuation subblock */
-                            break;
-                        case COMMENT_EXT_FUNC_CODE     :    /* comment */
-                            break;
-                        case GRAPHICS_EXT_FUNC_CODE    :    /* graphics control (GIF89) */
-                            if (DGifExtensionToGCB(eb.ByteCount, eb.Bytes, &gcb) == GIF_OK)
-                            {
-                                transparentColor = gcb.TransparentColor;
-                            }
-                            break;
-                        case PLAINTEXT_EXT_FUNC_CODE   :    /* plaintext */
-                            break;
-                        case APPLICATION_EXT_FUNC_CODE :    /* application block */
-                            break;
-                    }
-                    
+                    subItemType = ImageItemType::AnimationFrame;
+                    auto containerImageItem = std::make_shared<ImageItem>();
+                    containerImageItem->itemType = ImageItemType::Container;
+                    out_image = std::make_shared<Image>(containerImageItem, subItemType);
+                }
+                else
+                {
+                    subItemType = ImageItemType::Image;
                 }
 
-                out_properties.fProperties.Width = gif->SavedImages->ImageDesc.Width;
-                out_properties.fProperties.Height = gif->SavedImages->ImageDesc.Height;
-                out_properties.fProperties.NumSubImages = 0;
-                out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
-                out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_X8;
-                out_properties.fProperties.RowPitchInBytes = out_properties.fProperties.Width * 4;
-                out_properties.fData.Allocate(out_properties.fProperties.Height * out_properties.fProperties.RowPitchInBytes);
-                for (uint32_t y = 0 ; y < out_properties.fProperties.Height ; y++)
-                    for (uint32_t x = 0; x < out_properties.fProperties.Width; x++)
-                    {
-                        const uint32_t bufPos = (y * out_properties.fProperties.Width) + x;
-                        int idx = gif->SavedImages->RasterBits[bufPos];
-                        unsigned long alpha = idx == transparentColor ? 0 : 0xff;
-                        GifColorType colorType = gif->SColorMap->Colors[idx];
-                        const uint32_t RGBACOLOR = (alpha << 24) | (colorType.Blue << 16) | (colorType.Green << 8) | colorType.Red;
-                        ((uint32_t*)out_properties.fData.data())[bufPos] = RGBACOLOR;
-                        
-                    }
+                auto framesData = GetFramesData(gif);
+                auto frameBuffers = BakeGifFrames(gif, framesData);
+                for (auto imageIndex = 0; imageIndex < gif->ImageCount; imageIndex++)
+                {
+                    const auto& currentFrameData = framesData.at(imageIndex);
+                    ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
+                    imageItem->itemType = subItemType;
 
-                DGifCloseFile(gif, &e);
-                return true;
+                    auto currentImage = firstImage + imageIndex;
+
+                    imageItem->itemType = subItemType;
+                    imageItem->descriptor.width = currentImage->ImageDesc.Width;
+                    imageItem->descriptor.height = currentImage->ImageDesc.Height;
+                    imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                    imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                    imageItem->descriptor.rowPitchInBytes = IMCodec::GetTexelFormatSize(imageItem->descriptor.texelFormatDecompressed) * imageItem->descriptor.width / CHAR_BIT;
+                    imageItem->data = std::move(frameBuffers.at(imageIndex));
+                    imageItem->animationData.delayMilliseconds = currentFrameData.gcb.DelayTime * 10; // multiply by 10 to convert centiseconds to milliseconds.
+
+                    if (isMultiImage)
+                        out_image->SetSubImage(imageIndex, std::make_shared<Image>(imageItem, ImageItemType::Unknown));
+                    else
+                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+
+                }
+
+                DGifCloseFile(gif, &error);
+
+                result = ImageResult::Success;
             }
-            return false;
+
+            return result;
         }
     };
 }

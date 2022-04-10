@@ -10,4 +10,4 @@ file(GLOB_RECURSE sourceFiles
 set(TargetName CodecTiff)
 add_library (${TargetName}  ${sourceFiles} )
 include_directories(${TargetName} d:/DevelopmentExternal/libtiff/libtiff)
-target_link_libraries(${TargetName} d:/DevelopmentExternal/libtiff/lib/x64/Debug/libtiff.lib)
+target_link_libraries(${TargetName} d:/DevelopmentExternal/libtiff/lib/x64/Release/libtiff.lib)

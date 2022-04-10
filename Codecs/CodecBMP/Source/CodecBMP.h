@@ -1,6 +1,6 @@
 #pragma once
 
-#include <IImagePlugin.h>
+#include <Image.h>
 #include <LLUtils/Utility.h>
 
 namespace IMCodec
@@ -53,7 +53,7 @@ namespace IMCodec
     public:
         inline thread_local static bool sIsLoading = false;
 
-        CodecBMP() : mPluginProperties({ "Embedded BMP codec","bmp" , false})
+        CodecBMP() : mPluginProperties({ L"Embedded BMP codec","bmp"})
         {
             
         }
@@ -74,19 +74,15 @@ namespace IMCodec
             return value;
         }
 
-        virtual bool LoadImages([[maybe_unused]]  const uint8_t* buffer, [[maybe_unused]]  std::size_t size, [[maybe_unused]] std::vector<ImageDescriptor>& out_vec_properties) override
-        {
-            return false;
-        }
-
 
         //Base abstract methods
-        bool LoadImage(const uint8_t* buffer, std::size_t size, ImageDescriptor& out_properties) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             using namespace std;
-            bool success = false;
 
-            if (size > sizeof(BitmapFileHeader) + sizeof(BitmapInfoHeader))
+            ImageResult result = ImageResult::Fail;
+
+             if (size > sizeof(BitmapFileHeader) + sizeof(BitmapInfoHeader))
             {
                 const BitmapFileHeader& bmpFile = *reinterpret_cast<const BitmapFileHeader*>(buffer);
                 if (bmpFile.bfType == 0x4D42) // "BM")
@@ -114,57 +110,60 @@ namespace IMCodec
                         LL_EXCEPTION_NOT_IMPLEMENT("Bitmap compression type is not supported");
                     }
 
-                    out_properties.fProperties.Height = bmpInfo.biHeight;
-                    out_properties.fProperties.Width = bmpInfo.biWidth;
-                    out_properties.fProperties.NumSubImages = 0;
+                    auto imageItem = std::make_shared<ImageItem>();
+                    imageItem->itemType = ImageItemType::Image;
+                    imageItem->descriptor.height = bmpInfo.biHeight;
+                    imageItem->descriptor.width = bmpInfo.biWidth;
+                    
                     switch (bmpInfo.biBitCount)
                     {
                     case 1:
                         //Indexed color - return as RGBA
-                        out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_X1;
-                        out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                        imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_X1;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
                         break;
                     case 4:
                         //Indexed color - return as RGBA
-                        out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_X4;
-                        out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                        imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_X4;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
                         break;
                     case 8:
                         //Indexed color - return as RGBA
-                        out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_X8;
-                        out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                        imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_X8;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
                         break;
                     case 16:
                         //TODO: resolve texel format by analyzing masks instead assuming that masked image data
                         // is in the format B5G6R5
                         if (bmpInfo.biCompression == 3)
                         {
-                            out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_B5_G6_R5;
-                            out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_B5_G6_R5;
+                            imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_B5_G6_R5;
+                            imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B5_G6_R5;
                         }
                         else
                         {
-                            out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_B5_G5_R5_X1;
-                            out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_B5_G5_R5_X1;
+                            imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_B5_G5_R5_X1;
+                            imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B5_G5_R5_X1;
                         }
                         break;
                     case 24:
-                        out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_B8_G8_R8;
-                        out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8;
+                        imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_B8_G8_R8;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8;
                         break;
                     case 32:
-                        out_properties.fProperties.TexelFormatStorage = IMCodec::TexelFormat::I_B8_G8_R8_A8;
-                        out_properties.fProperties.TexelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8_A8;
+                        imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_B8_G8_R8_A8;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8_A8;
                         break;
                     default:
                         LL_EXCEPTION_UNEXPECTED_VALUE;
                     }
 
-                    const auto texelSize = IMCodec::GetTexelInfo(out_properties.fProperties.TexelFormatDecompressed).texelSize;
-                    out_properties.fProperties.RowPitchInBytes = LLUtils::Utility::Align<size_t>(bmpInfo.biWidth * texelSize / CHAR_BIT, sizeof(uint32_t));
-                    const size_t destDataSize = out_properties.fProperties.RowPitchInBytes * out_properties.fProperties.Height;
+                    const auto texelSize = IMCodec::GetTexelInfo(imageItem->descriptor.texelFormatDecompressed).texelSize;
+                    imageItem->descriptor.rowPitchInBytes = LLUtils::Utility::Align<size_t>(bmpInfo.biWidth * texelSize / CHAR_BIT, sizeof(uint32_t));
+                    const size_t destDataSize = imageItem->descriptor.rowPitchInBytes * imageItem->descriptor.height;
 
-                    out_properties.fData.Allocate(destDataSize);
+                    
+                    imageItem->data.Allocate(destDataSize);
                     const size_t sourceRowPitch = ((bmpInfo.biBitCount * bmpInfo.biWidth + 31) & ~31) >> 3;
 
                     switch (bmpInfo.biBitCount)
@@ -176,20 +175,22 @@ namespace IMCodec
                     {
                         const uint32_t* colorTable = reinterpret_cast<const uint32_t*>(baseSourceAddress);
                         baseSourceAddress += (bmpInfo.biClrUsed == 0 ? (1 << bmpInfo.biBitCount) : bmpInfo.biClrUsed) * sizeof(uint32_t);
-                        for (size_t line = 0; line < out_properties.fProperties.Height; line++)
+                        for (size_t line = 0; line < imageItem->descriptor.height; line++)
                         {
-                            auto sourceLineOffset = (out_properties.fProperties.Height - line - 1) * sourceRowPitch;
-                            auto destLineOffset = line * out_properties.fProperties.RowPitchInBytes;
+                            auto sourceLineOffset = (imageItem->descriptor.height - line - 1) * sourceRowPitch;
+                            auto destLineOffset = line * imageItem->descriptor.rowPitchInBytes;
 
-                            for (size_t x = 0; x < out_properties.fProperties.Width; x++)
+                            for (size_t x = 0; x < imageItem->descriptor.width; x++)
                             {
                                 uint8_t pixelIndex = GetValue(bmpInfo.biBitCount, baseSourceAddress + sourceLineOffset, x);
                                 uint32_t color = 0xFF << 24 | colorTable[pixelIndex];
-                                uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(out_properties.fData.data()) + destLineOffset) + x;
+                                uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset) + x;
                                 *currentpixel = color;
                             }
                         }
-                        success = true;
+                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                        result = ImageResult::Success;
+
                     }
                     break;
                     // Normal color
@@ -198,19 +199,19 @@ namespace IMCodec
                     case 32:
                     {
                         
-                        for (size_t line = 0; line < out_properties.fProperties.Height; line++)
+                        for (size_t line = 0; line < imageItem->descriptor.height; line++)
                         {
-                            auto sourceLineOffset = (out_properties.fProperties.Height - line - 1) * out_properties.fProperties.RowPitchInBytes;
-                            auto destLineOffset = line * out_properties.fProperties.RowPitchInBytes;
+                            auto sourceLineOffset = (imageItem->descriptor.height - line - 1) * imageItem->descriptor.rowPitchInBytes;
+                            auto destLineOffset = line * imageItem->descriptor.rowPitchInBytes;
                             const auto sourceLineAddress = baseSourceAddress + sourceLineOffset;
-                            auto destLineAddress = reinterpret_cast<uint8_t*>(out_properties.fData.data()) + destLineOffset;
+                            auto destLineAddress = reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset;
 
                             if (bmpInfo.biBitCount == 32)
                             {
                                 //If it's a 32 bit bitmap, override alpha channel with full opacity.
                                 //some application write just zeros to the alpha channel of 32 bit bitmaps.
 
-                                for (size_t x = 0; x < out_properties.fProperties.Width; x += 1)
+                                for (size_t x = 0; x < imageItem->descriptor.width; x += 1)
                                 {
                                     using color32 = std::array<uint8_t, 4>;
                                     reinterpret_cast<color32*>(destLineAddress)[x] = reinterpret_cast<const color32*>(sourceLineAddress)[x];
@@ -219,22 +220,18 @@ namespace IMCodec
                             }
                             else
                             {
-                                memcpy(destLineAddress, sourceLineAddress, out_properties.fProperties.RowPitchInBytes);
+                                memcpy(destLineAddress, sourceLineAddress, imageItem->descriptor.rowPitchInBytes);
                             }
 
                         }
-                        success = true;
+                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                        result = ImageResult::Success;
                         break;
                     }
                     }
-
-
-
-
-
                 }
             }
-            return success;
+            return result;
         }
 
 
