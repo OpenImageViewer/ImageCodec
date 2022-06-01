@@ -42,7 +42,7 @@ namespace IMCodec
 
         struct FrameData
         {
-            GraphicsControlBlock gcb;
+            GraphicsControlBlock gcb{ 0, false , 0 , -1 };
             GifImageDesc imagedesc;
         };
 
@@ -189,10 +189,6 @@ namespace IMCodec
 
             if (gif != nullptr && DGifSlurp(gif) == GIF_OK)
             {
-                SavedImage* firstImage = gif->SavedImages;
-
-                using namespace IMCodec;
-                
                 ImageItemType subItemType = ImageItemType::Unknown;
                 
                 auto isMultiImage = gif->ImageCount > 1;
