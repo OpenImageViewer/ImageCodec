@@ -130,6 +130,11 @@ namespace IMCodec
 
             LLUtils::Buffer compositeImage(gif->SHeight * gif->SWidth * 4);
 
+            // Clear background first.
+            for (int i = 0; i < gif->SHeight * gif->SWidth; i++)
+                reinterpret_cast<GifWord*>(compositeImage.data())[i] = gif->SBackGroundColor;
+
+
             for (auto i = 0; i < numBuffers; i++)
             {
                 const auto& frameData = framesData.at(i);
@@ -138,26 +143,36 @@ namespace IMCodec
                 switch (frameData.gcb.DisposalMode)
                 {
                 case DISPOSAL_UNSPECIFIED:
+                    for (auto y = 0; y < frameData.imagedesc.Height; y++)
+                        for (auto x = 0; x < frameData.imagedesc.Width; x++)
+                        {
+                            const auto& sourceColor = reinterpret_cast<const uint32_t*>(currentBuffer.data())[x + y * frameData.imagedesc.Width];
+                            auto& targetColor = reinterpret_cast<uint32_t*>(compositeImage.data())[(x + frameData.imagedesc.Left) + (y + frameData.imagedesc.Top) * gif->SWidth];
+                            targetColor = sourceColor;
+                        }
                     break;
                 case DISPOSE_DO_NOT:
-                    for (auto pixelIndex = 0; pixelIndex < frameData.imagedesc.Width * frameData.imagedesc.Height; pixelIndex++)
-                    {
-                        const auto& sourceColor = reinterpret_cast<const uint32_t*>(currentBuffer.data())[pixelIndex];
-                        auto& targetColor = reinterpret_cast<uint32_t*>(compositeImage.data())[pixelIndex];
-                        const int alpha = sourceColor >> 24;
-                        if (alpha > 0 )
-                            targetColor = sourceColor;
-                    }
-
-                    currentBuffer = compositeImage.Clone();
+                    for (auto y = 0 ; y < frameData.imagedesc.Height; y++)
+                        for (auto x = 0; x < frameData.imagedesc.Width; x++)
+                        {
+                            const auto& sourceColor = reinterpret_cast<const uint32_t*>(currentBuffer.data())[x + y * frameData.imagedesc.Width];
+                            auto& targetColor = reinterpret_cast<uint32_t*>(compositeImage.data())[ (x + frameData.imagedesc.Left) + (y + frameData.imagedesc.Top) * gif->SWidth];
+                            const int sourceAlpha = sourceColor >> 24;
+                            if (sourceAlpha > 0)
+                                targetColor = sourceColor;
+                        }
 
                     break;
                 case DISPOSE_BACKGROUND:   
+    	            // Clear to background color.
+                    for (int i = 0; i < gif->SHeight * gif->SWidth; i++)
+                        reinterpret_cast<GifWord*>(compositeImage.data())[i] = gif->SBackGroundColor;
                     break;
                 case DISPOSE_PREVIOUS:
                     break;
                 }
                 
+                currentBuffer = compositeImage.Clone();
             }
 
             return buffers;
@@ -201,12 +216,11 @@ namespace IMCodec
                     const auto& currentFrameData = framesData.at(imageIndex);
                     ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
                     imageItem->itemType = subItemType;
-
-                    auto currentImage = firstImage + imageIndex;
-
-                    imageItem->itemType = subItemType;
-                    imageItem->descriptor.width = currentImage->ImageDesc.Width;
-                    imageItem->descriptor.height = currentImage->ImageDesc.Height;
+                    
+                    //When baking frames, the size of the image should be the gif virtual canvas for all the frames
+                    //, instead of the current frame size itself.
+                    imageItem->descriptor.width = gif->SWidth;
+                    imageItem->descriptor.height = gif->SHeight;
                     imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
                     imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_R8_G8_B8_A8;
                     imageItem->descriptor.rowPitchInBytes = IMCodec::GetTexelFormatSize(imageItem->descriptor.texelFormatDecompressed) * imageItem->descriptor.width / CHAR_BIT;
