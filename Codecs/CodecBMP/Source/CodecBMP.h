@@ -75,6 +75,13 @@ namespace IMCodec
         }
 
 
+        bool VerifyFileSize(const uint8_t* startAddress, const uint8_t* currentAddress, size_t totalSize, size_t requiredSize)
+        {
+            const size_t sizeRead = currentAddress - startAddress;
+            const size_t sizeRemaininBuffer = totalSize - sizeRead;
+            return sizeRemaininBuffer >= requiredSize;
+        }
+
         //Base abstract methods
         ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
@@ -120,17 +127,17 @@ namespace IMCodec
                     case 1:
                         //Indexed color - return as RGBA
                         imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_X1;
-                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8_A8;
                         break;
                     case 4:
                         //Indexed color - return as RGBA
                         imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_X4;
-                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8_A8;
                         break;
                     case 8:
                         //Indexed color - return as RGBA
                         imageItem->descriptor.texelFormatStorage = IMCodec::TexelFormat::I_X8;
-                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_R8_G8_B8_A8;
+                        imageItem->descriptor.texelFormatDecompressed = IMCodec::TexelFormat::I_B8_G8_R8_A8;
                         break;
                     case 16:
                         //TODO: resolve texel format by analyzing masks instead assuming that masked image data
@@ -175,21 +182,31 @@ namespace IMCodec
                     {
                         const uint32_t* colorTable = reinterpret_cast<const uint32_t*>(baseSourceAddress);
                         baseSourceAddress += (bmpInfo.biClrUsed == 0 ? (1 << bmpInfo.biBitCount) : bmpInfo.biClrUsed) * sizeof(uint32_t);
-                        for (size_t line = 0; line < imageItem->descriptor.height; line++)
-                        {
-                            auto sourceLineOffset = (imageItem->descriptor.height - line - 1) * sourceRowPitch;
-                            auto destLineOffset = line * imageItem->descriptor.rowPitchInBytes;
 
-                            for (size_t x = 0; x < imageItem->descriptor.width; x++)
+                        if (VerifyFileSize(reinterpret_cast<const uint8_t*>(buffer), baseSourceAddress, size
+                            , sourceRowPitch * imageItem->descriptor.height))
+                        {
+                            for (size_t line = 0; line < imageItem->descriptor.height; line++)
                             {
-                                uint8_t pixelIndex = GetValue(bmpInfo.biBitCount, baseSourceAddress + sourceLineOffset, x);
-                                uint32_t color = 0xFF << 24 | colorTable[pixelIndex];
-                                uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset) + x;
-                                *currentpixel = color;
+                                auto sourceLineOffset = (imageItem->descriptor.height - line - 1) * sourceRowPitch;
+                                auto destLineOffset = line * imageItem->descriptor.rowPitchInBytes;
+
+                                for (size_t x = 0; x < imageItem->descriptor.width; x++)
+                                {
+                                    uint8_t pixelIndex = GetValue(bmpInfo.biBitCount, baseSourceAddress + sourceLineOffset, x);
+                                    uint32_t color = 0xFF << 24 | colorTable[pixelIndex];
+                                    uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset) + x;
+                                    *currentpixel = color;
+                                }
                             }
+                            out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                            result = ImageResult::Success;
                         }
-                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
-                        result = ImageResult::Success;
+                        else
+                        {
+                            result = ImageResult::FileIsCorrupted;
+                        }
+                        
 
                     }
                     break;
@@ -198,34 +215,43 @@ namespace IMCodec
                     case 24:
                     case 32:
                     {
-                        
-                        for (size_t line = 0; line < imageItem->descriptor.height; line++)
+                     
+                        if (VerifyFileSize(reinterpret_cast<const uint8_t*>(buffer), baseSourceAddress, size
+                            , sourceRowPitch * imageItem->descriptor.height))
                         {
-                            auto sourceLineOffset = (imageItem->descriptor.height - line - 1) * imageItem->descriptor.rowPitchInBytes;
-                            auto destLineOffset = line * imageItem->descriptor.rowPitchInBytes;
-                            const auto sourceLineAddress = baseSourceAddress + sourceLineOffset;
-                            auto destLineAddress = reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset;
 
-                            if (bmpInfo.biBitCount == 32)
+                            for (size_t line = 0; line < imageItem->descriptor.height; line++)
                             {
-                                //If it's a 32 bit bitmap, override alpha channel with full opacity.
-                                //some application write just zeros to the alpha channel of 32 bit bitmaps.
+                                auto sourceLineOffset = (imageItem->descriptor.height - line - 1) * imageItem->descriptor.rowPitchInBytes;
+                                auto destLineOffset = line * imageItem->descriptor.rowPitchInBytes;
+                                const auto sourceLineAddress = baseSourceAddress + sourceLineOffset;
+                                auto destLineAddress = reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset;
 
-                                for (size_t x = 0; x < imageItem->descriptor.width; x += 1)
+                                if (bmpInfo.biBitCount == 32)
                                 {
-                                    using color32 = std::array<uint8_t, 4>;
-                                    reinterpret_cast<color32*>(destLineAddress)[x] = reinterpret_cast<const color32*>(sourceLineAddress)[x];
-                                    reinterpret_cast<color32*>(destLineAddress)[x][3] = 255;
-                                }
-                            }
-                            else
-                            {
-                                memcpy(destLineAddress, sourceLineAddress, imageItem->descriptor.rowPitchInBytes);
-                            }
+                                    //If it's a 32 bit bitmap, override alpha channel with full opacity.
+                                    //some application write just zeros to the alpha channel of 32 bit bitmaps.
 
+                                    for (size_t x = 0; x < imageItem->descriptor.width; x += 1)
+                                    {
+                                        using color32 = std::array<uint8_t, 4>;
+                                        reinterpret_cast<color32*>(destLineAddress)[x] = reinterpret_cast<const color32*>(sourceLineAddress)[x];
+                                        reinterpret_cast<color32*>(destLineAddress)[x][3] = 255;
+                                    }
+                                }
+                                else
+                                {
+                                    memcpy(destLineAddress, sourceLineAddress, imageItem->descriptor.rowPitchInBytes);
+                                }
+
+                            }
+                            out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                            result = ImageResult::Success;
                         }
-                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
-                        result = ImageResult::Success;
+                        else
+                        {
+                            result = ImageResult::FileIsCorrupted;
+                        }
                         break;
                     }
                     }

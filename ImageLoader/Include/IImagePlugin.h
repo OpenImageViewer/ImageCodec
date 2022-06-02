@@ -18,6 +18,7 @@ namespace IMCodec
     enum class ImageResult
     {
           Success
+        , FileIsCorrupted
         , Fail
     };
 
