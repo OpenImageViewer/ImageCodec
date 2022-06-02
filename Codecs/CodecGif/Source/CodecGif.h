@@ -164,9 +164,15 @@ namespace IMCodec
 
                     break;
                 case DISPOSE_BACKGROUND:   
-    	            // Clear to background color.
-                    for (int i = 0; i < gif->SHeight * gif->SWidth; i++)
-                        reinterpret_cast<GifWord*>(compositeImage.data())[i] = gif->SBackGroundColor;
+                    for (auto y = 0; y < frameData.imagedesc.Height; y++)
+                        for (auto x = 0; x < frameData.imagedesc.Width; x++)
+                        {
+                            const auto& sourceColor = reinterpret_cast<const uint32_t*>(currentBuffer.data())[x + y * frameData.imagedesc.Width];
+                            auto& targetColor = reinterpret_cast<uint32_t*>(compositeImage.data())[(x + frameData.imagedesc.Left) + (y + frameData.imagedesc.Top) * gif->SWidth];
+                            const int sourceAlpha = sourceColor >> 24;
+                            targetColor = sourceAlpha > 0 ? sourceColor : gif->SBackGroundColor;
+                        }
+
                     break;
                 case DISPOSE_PREVIOUS:
                     break;
