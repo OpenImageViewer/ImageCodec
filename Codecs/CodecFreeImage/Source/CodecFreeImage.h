@@ -24,7 +24,7 @@ namespace IMCodec
         ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
         {
             FIBITMAP* freeImageHandle;
-            ImageResult result = ImageResult::Success;
+            ImageResult result = ImageResult::Fail;
 
             using namespace IMCodec;
 
