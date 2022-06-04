@@ -25,9 +25,10 @@ option(WEBP_ENABLE_SWAP_16BIT_CSP "Enable byte swap for 16 bit colorspaces." OFF
 
 set(TargetName CodecWebP)
 add_library (${TargetName} ${sourceFiles} )
-add_subdirectory(D:/DevelopmentExternal/libwebp  ./external/libwebp)
-target_include_directories(${TargetName} PRIVATE D:/DevelopmentExternal/libwebp)
-target_include_directories(${TargetName} PRIVATE D:/DevelopmentExternal/libwebp/src)
+set(LibwebPFolder ../../External/libwebp)
+add_subdirectory(${LibwebPFolder}  ./external/libwebp)
+target_include_directories(${TargetName} PRIVATE ${LibwebPFolder})
+target_include_directories(${TargetName} PRIVATE ${LibwebPFolder}/src)
 
 target_link_libraries(${TargetName} 
 webp

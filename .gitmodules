@@ -1,3 +1,9 @@
 [submodule "External/LLUtils"]
 	path = External/LLUtils
 	url = https://github.com/TheNicker/LLUtils.git
+[submodule "External/libwebp"]
+	path = External/libwebp
+	url = https://chromium.googlesource.com/webm/libwebp
+[submodule "External/libpsd"]
+	path = External/libpsd
+	url = https://github.com/TheNicker/libpsd.git
