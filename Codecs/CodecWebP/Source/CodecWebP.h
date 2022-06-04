@@ -30,59 +30,69 @@ namespace IMCodec
             };
             
             WebPAnimDecoder* dec = WebPAnimDecoderNew(&webp_data, nullptr);
-            if (dec == nullptr)
-                LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not create WebP decoder");
-            
-            WebPAnimInfo animInfo;
-            if (!WebPAnimDecoderGetInfo(dec, &animInfo)) 
-                LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not create WebP animation info");
-
-            const auto totalFrames = animInfo.frame_count;
-
-            if (totalFrames > 1)
+            struct AnimDecoderDeletor
             {
-                //Decode an animation
-                constexpr auto numChannels = 4;
-
-                auto canvasWidth = animInfo.canvas_width;
-                auto canvasHeight = animInfo.canvas_height;
-                auto loopCount = animInfo.loop_count;
-                auto bgColor = animInfo.bgcolor;
-
-                const auto frameSizeInBytes = canvasWidth * canvasHeight * numChannels;
-                
-                auto imageItem = std::make_shared<ImageItem>();
-                imageItem->itemType = ImageItemType::Container;
-                out_image = std::make_shared<Image>(imageItem, ImageItemType::AnimationFrame);
-                out_image->SetNumSubImages(totalFrames);
-
-                
-                int frameIndex = 0;
-                int lastTimeStamp = 0;
-
-                while (WebPAnimDecoderHasMoreFrames(dec))
+                WebPAnimDecoder* decoder;
+                ~AnimDecoderDeletor()
                 {
-                  
-                    uint8_t* frame_rgba;
-                    int timestamp;
-                    if (!WebPAnimDecoderGetNext(dec, &frame_rgba, &timestamp))
-                        LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not decode WebP frame");
-
-                    auto frameImageItem = std::make_shared<ImageItem>();
-                    frameImageItem->itemType = ImageItemType::Image;
-                    frameImageItem->data.Allocate(frameSizeInBytes);
-                    frameImageItem->data.Write(reinterpret_cast<const std::byte*>(frame_rgba), 0, frameSizeInBytes);
-                    frameImageItem->animationData.delayMilliseconds = timestamp - lastTimeStamp;
-                    frameImageItem->descriptor.height = canvasHeight;
-                    frameImageItem->descriptor.width = canvasWidth;
-                    frameImageItem->descriptor.texelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
-                    frameImageItem->descriptor.texelFormatStorage = TexelFormat::I_R8_G8_B8_A8;
-                    frameImageItem->descriptor.rowPitchInBytes = frameImageItem->descriptor.width * GetTexelFormatSize(frameImageItem->descriptor.texelFormatDecompressed) / CHAR_BIT;
-                    out_image->SetSubImage(frameIndex, std::make_shared<Image>(frameImageItem, ImageItemType::Unknown));
-                    lastTimeStamp = timestamp;
-                    frameIndex++;
+                    WebPAnimDecoderDelete(decoder);
                 }
-                result = ImageResult::Success;
+                
+            } deletor{ dec };
+
+            if (dec != nullptr)
+            {
+                WebPAnimInfo animInfo;
+                if (!WebPAnimDecoderGetInfo(dec, &animInfo))
+                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not create WebP animation info");
+
+                const auto totalFrames = animInfo.frame_count;
+
+                if (totalFrames > 1)
+                {
+                    //Decode an animation
+                    constexpr auto numChannels = 4;
+
+                    auto canvasWidth = animInfo.canvas_width;
+                    auto canvasHeight = animInfo.canvas_height;
+                    auto loopCount = animInfo.loop_count;
+                    auto bgColor = animInfo.bgcolor;
+
+                    const auto frameSizeInBytes = canvasWidth * canvasHeight * numChannels;
+
+                    auto imageItem = std::make_shared<ImageItem>();
+                    imageItem->itemType = ImageItemType::Container;
+                    out_image = std::make_shared<Image>(imageItem, ImageItemType::AnimationFrame);
+                    out_image->SetNumSubImages(totalFrames);
+
+
+                    int frameIndex = 0;
+                    int lastTimeStamp = 0;
+
+                    while (WebPAnimDecoderHasMoreFrames(dec))
+                    {
+
+                        uint8_t* frame_rgba;
+                        int timestamp;
+                        if (!WebPAnimDecoderGetNext(dec, &frame_rgba, &timestamp))
+                            LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Could not decode WebP frame");
+
+                        auto frameImageItem = std::make_shared<ImageItem>();
+                        frameImageItem->itemType = ImageItemType::Image;
+                        frameImageItem->data.Allocate(frameSizeInBytes);
+                        frameImageItem->data.Write(reinterpret_cast<const std::byte*>(frame_rgba), 0, frameSizeInBytes);
+                        frameImageItem->animationData.delayMilliseconds = timestamp - lastTimeStamp;
+                        frameImageItem->descriptor.height = canvasHeight;
+                        frameImageItem->descriptor.width = canvasWidth;
+                        frameImageItem->descriptor.texelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
+                        frameImageItem->descriptor.texelFormatStorage = TexelFormat::I_R8_G8_B8_A8;
+                        frameImageItem->descriptor.rowPitchInBytes = frameImageItem->descriptor.width * GetTexelFormatSize(frameImageItem->descriptor.texelFormatDecompressed) / CHAR_BIT;
+                        out_image->SetSubImage(frameIndex, std::make_shared<Image>(frameImageItem, ImageItemType::Unknown));
+                        lastTimeStamp = timestamp;
+                        frameIndex++;
+                    }
+                    result = ImageResult::Success;
+                }
             }
             else
             {
