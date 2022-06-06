@@ -112,13 +112,14 @@ namespace IMCodec
         {
             using namespace std;
             ImageResult result = ImageResult::Fail;
-            png_image image{}; 
+            png_image image{};
             /* Initialize the 'png_image' structure. */
             image.version = PNG_IMAGE_VERSION;
-            
-            if (png_image_begin_read_from_memory(&image, buffer,size) != 0)
+
+            if (png_image_begin_read_from_memory(&image, buffer, size) != 0)
             {
                 //The size of the image buffer.
+                const auto version = image.version;
                 const auto sourceImageSize = PNG_IMAGE_SIZE(image);
                 const auto sizeofChannel = static_cast<unsigned int>(PNG_IMAGE_PIXEL_COMPONENT_SIZE(image.format));
                 const auto sourceRowPitchInComponents = PNG_IMAGE_ROW_STRIDE(image);
@@ -131,7 +132,7 @@ namespace IMCodec
                 //Number of channels as found on disk, for color mapped image the value is 1
                 const auto numSourceChannels = PNG_IMAGE_PIXEL_CHANNELS(image.format);
                 const auto targetPixelSize = sizeofChannel * numChannles;
-                const auto sourcePixelSize  = sizeofChannel * numSourceChannels;
+                const auto sourcePixelSize = sizeofChannel * numSourceChannels;
                 LLUtils::BitFlags<PngFormatFlags> formatFlags(static_cast<PngFormatFlags>(image.format));
                 const bool isColorMapped = formatFlags.test(PngFormatFlags::ColorMap);
                 const TexelFormat texelFormat = ResolveTexelFormat(image.format, sizeofChannel);
@@ -144,7 +145,7 @@ namespace IMCodec
                 png_inforp info_ptr = control->info_ptr;
                 png_uint_32 numFrames{};
                 png_uint_32 numPlays{};
-                
+
                 png_get_acTL(png_ptr, info_ptr, &numFrames, &numPlays);
 
                 if (numFrames > 1)
@@ -166,6 +167,8 @@ namespace IMCodec
                     out_image = std::make_shared<Image>(imageItem, ImageItemType::AnimationFrame);
                     out_image->SetNumSubImages(numFrames);
 
+
+
                     for (auto frameIndex = 0; frameIndex < numFrames; frameIndex++)
                     {
                         auto& currentFrameBuffer = frameBuffers.at(frameIndex);
@@ -173,23 +176,24 @@ namespace IMCodec
                         memset(currentFrameBuffer.data(), 0, currentFrameBuffer.size());
 
                         png_read_frame_head(png_ptr, info_ptr);
+
                         if (png_get_valid(png_ptr, info_ptr, PNG_INFO_fcTL))
                         {
                             auto res = png_get_next_frame_fcTL(png_ptr, info_ptr, &framewidth, &frameheight, &frameleft, &frametop, &delaynom, &delaydenom, &disposeOp, &blendOp);
 
+
+                            LLUtils::Buffer readBuffer(sourceRowPitchInBytes);
+                            png_bytep row_buf = (png_bytep)readBuffer.data();
                             for (auto y = 0; y < frameheight; y++)
                             {
                                 const size_t rowBytes = framewidth * targetPixelSize;
-                                //size_t rowBytes = png_get_rowbytes(png_ptr, info_ptr);
-                                png_bytep row_buf = (png_bytep)png_malloc(png_ptr, rowBytes);
-
                                 png_read_rows(png_ptr, (png_bytepp)&row_buf, nullptr, 1);
 
                                 auto lineOffset = (y + frametop) * targetRowPitchInBytes + frameleft * targetPixelSize;
                                 currentFrameBuffer.Write(reinterpret_cast<const std::byte*>(row_buf), lineOffset, rowBytes);
-                                png_free(png_ptr, row_buf);
                             }
                         }
+
 
                         auto frameImageItem = std::make_shared<ImageItem>();
                         frameImageItem->itemType = ImageItemType::Image;
@@ -198,8 +202,9 @@ namespace IMCodec
                         frameImageItem->descriptor.height = canvasheight;
                         frameImageItem->descriptor.texelFormatDecompressed = texelFormat;
                         frameImageItem->data = std::move(currentFrameBuffer);
-                        frameImageItem->animationData.delayMilliseconds = delaynom * 1000 / delaydenom ;
+                        frameImageItem->animationData.delayMilliseconds = delaynom * 1000 / delaydenom;
                         out_image->SetSubImage(frameIndex, std::make_shared<Image>(frameImageItem, ImageItemType::Unknown));
+
                     }
                     result = ImageResult::Success;
                 }

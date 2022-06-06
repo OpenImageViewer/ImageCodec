@@ -9,5 +9,22 @@ file(GLOB_RECURSE sourceFiles
 
 set(TargetName CodecPNG)
 add_library (${TargetName} ${sourceFiles} )
-include_directories(${TargetName} d:/DevelopmentExternal/libpng-code  )
-target_link_libraries(${TargetName} d:/DevelopmentExternal/libpng-code/projects/vstudio/x64/Release/libpng16.lib)
+
+
+set(LibPNGFolder ../../External/libpng)
+set(zlibFolder ../../External/zlib)
+add_subdirectory(${zlibFolder} ./external/zlib)
+option(PNG_BUILD_ZLIB ON)
+set(ZLIB_INCLUDE_DIR ${zlibFolder})
+option(PNG_SHARED OFF)
+option(PNG_TESTS OFF)
+
+add_subdirectory(${LibPNGFolder} ./external/libpng)
+
+target_include_directories(${TargetName} PRIVATE ${LibPNGFolder})
+target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/libpng)
+target_include_directories(png_static PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/zlib)
+
+
+target_link_libraries(${TargetName} png_static)
+target_link_libraries(${TargetName} zlib)

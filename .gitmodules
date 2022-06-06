@@ -7,3 +7,9 @@
 [submodule "External/libpsd"]
 	path = External/libpsd
 	url = https://github.com/TheNicker/libpsd.git
+[submodule "External/libpng"]
+	path = External/libpng
+	url = https://github.com/OpenImageViewer/libpng.git
+[submodule "External/zlib"]
+	path = External/zlib
+	url = https://github.com/OpenImageViewer/zlib.git
