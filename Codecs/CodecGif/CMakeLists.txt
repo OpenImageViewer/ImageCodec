@@ -10,5 +10,9 @@ file(GLOB_RECURSE sourceFiles
 
 set(TargetName CodecGif)
 add_library (${TargetName} ${sourceFiles})
-include_directories(d:/DevelopmentExternal/GifLib/GifLib/GifLib/Include)
-target_link_libraries(${TargetName} D:/DevelopmentExternal/GifLib/GifLib/x64/Release/GifLib.lib)
+
+
+set(giflibFolder ../../External/libgif)
+add_subdirectory(${giflibFolder} ./external/libgif)
+include_directories(${giflibFolder}/libgif/include)
+target_link_libraries(${TargetName} libgif)

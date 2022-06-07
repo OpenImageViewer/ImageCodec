@@ -30,7 +30,7 @@ add_subdirectory(${LibwebPFolder}  ./external/libwebp)
 target_include_directories(${TargetName} PRIVATE ${LibwebPFolder})
 target_include_directories(${TargetName} PRIVATE ${LibwebPFolder}/src)
 
-target_link_libraries(${TargetName} 
+target_link_libraries(${TargetName} PRIVATE
 webp
 webpdecoder
 webpdemux

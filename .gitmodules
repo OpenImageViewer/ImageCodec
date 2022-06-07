@@ -13,3 +13,9 @@
 [submodule "External/zlib"]
 	path = External/zlib
 	url = https://github.com/OpenImageViewer/zlib.git
+[submodule "External/libgif"]
+	path = External/libgif
+	url = https://github.com/OpenImageViewer/libgif.git
+[submodule "External/libtiff"]
+	path = External/libtiff
+	url = https://github.com/OpenImageViewer/libtiff.git
