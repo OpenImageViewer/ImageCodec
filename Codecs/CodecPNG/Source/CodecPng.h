@@ -128,14 +128,14 @@ namespace IMCodec
                 const auto canvasheight = image.height;
 
                 //Number of channels of the target image.
-                const auto numChannles = PNG_IMAGE_SAMPLE_CHANNELS(image.format);
+                auto numChannles = PNG_IMAGE_SAMPLE_CHANNELS(image.format);
                 //Number of channels as found on disk, for color mapped image the value is 1
-                const auto numSourceChannels = PNG_IMAGE_PIXEL_CHANNELS(image.format);
-                const auto targetPixelSize = sizeofChannel * numChannles;
-                const auto sourcePixelSize = sizeofChannel * numSourceChannels;
+                auto numSourceChannels = PNG_IMAGE_PIXEL_CHANNELS(image.format);
+                auto targetPixelSize = sizeofChannel * numChannles;
+                auto sourcePixelSize = sizeofChannel * numSourceChannels;
                 LLUtils::BitFlags<PngFormatFlags> formatFlags(static_cast<PngFormatFlags>(image.format));
-                const bool isColorMapped = formatFlags.test(PngFormatFlags::ColorMap);
-                const TexelFormat texelFormat = ResolveTexelFormat(image.format, sizeofChannel);
+                bool isColorMapped = formatFlags.test(PngFormatFlags::ColorMap);
+                TexelFormat texelFormat = ResolveTexelFormat(image.format, sizeofChannel);
 
                 auto targetRowPitchInBytes = isColorMapped ? targetPixelSize * sourceRowPitchInBytes : sourceRowPitchInBytes; // might change if it's a color mapped png.
                 auto targetImageSize = isColorMapped ? targetRowPitchInBytes * canvasheight : sourceImageSize;
@@ -158,6 +158,17 @@ namespace IMCodec
                     png_uint_16 delaydenom{};
                     png_byte disposeOp{};
                     png_byte blendOp{};
+             
+                    png_byte colorType = png_get_color_type(png_ptr, info_ptr);
+
+                    if (colorType == PNG_COLOR_TYPE_RGB)
+                    {
+                        numSourceChannels = 3;
+                        sourcePixelSize = sizeofChannel * numSourceChannels;
+                        targetPixelSize = sourcePixelSize;
+                        texelFormat = TexelFormat::I_R8_G8_B8;
+                        targetRowPitchInBytes = targetPixelSize * canvaswidth;
+                    }
 
                     png_get_acTL(png_ptr, info_ptr, &numFrames, &numPlays);
 
