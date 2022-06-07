@@ -19,3 +19,6 @@
 [submodule "External/libtiff"]
 	path = External/libtiff
 	url = https://github.com/OpenImageViewer/libtiff.git
+[submodule "External/libjpeg-turbo"]
+	path = External/libjpeg-turbo
+	url = https://github.com/OpenImageViewer/libjpeg-turbo.git

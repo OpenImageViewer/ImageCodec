@@ -8,6 +8,21 @@ file(GLOB_RECURSE sourceFiles
 
 set(TargetName CodecJPG)
 add_library (${TargetName} ${sourceFiles} )
-include_directories(D:/DevelopmentExternal/libjpeg-turbo64/include)
 
-target_link_libraries(${TargetName} d:/DevelopmentExternal/libjpeg-turbo64/lib/turbojpeg.lib )
+
+set(libjpeg-turboFolder ../../External/libjpeg-turbo)
+#Enable ASM provided by NASM
+
+set(ENV{ASM_NASM} "D:/nasm-2.15.05/nasm.exe")
+#set(CMAKE_ASM_NASM_COMPILER "D:/nasm-2.15.05/nasm.exe")
+set(CMAKE_ASM_COMPILE_OBJECT "-ID:/development/OpenImageViewer/OpenImageViewer/External/ImageCodec/External/libjpeg-turbo/simd/nasm -ID:/development/OpenImageViewer/OpenImageViewer/External/ImageCodec/External/libjpeg-turbo/simd/x86_64 <SOURCE>" STRING cache)
+
+#set(CMAKE_ASM_COMPILE_OBJECT "-I<CMAKE_CURRENT_SOURCE_DIR>../../External/libjpeg-turbo/simd/nasm 
+#-I<CMAKE_CURRENT_SOURCE_DIR>../../External/libjpeg-turbo/simd/x86_64 <CMAKE_ASM_NASM_COMPILER> <SOURCE>")
+
+
+add_subdirectory(${libjpeg-turboFolder} ./external/libjpeg-turbo)
+
+target_include_directories(${TargetName} PRIVATE ${libjpeg-turboFolder})
+
+target_link_libraries(${TargetName} turbojpeg)
