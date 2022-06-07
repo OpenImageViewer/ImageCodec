@@ -22,3 +22,6 @@
 [submodule "External/libjpeg-turbo"]
 	path = External/libjpeg-turbo
 	url = https://github.com/OpenImageViewer/libjpeg-turbo.git
+[submodule "External/bintools"]
+	path = External/bintools
+	url = https://github.com/OpenImageViewer/bintools.git
