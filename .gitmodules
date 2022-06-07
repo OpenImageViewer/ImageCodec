@@ -25,3 +25,9 @@
 [submodule "External/bintools"]
 	path = External/bintools
 	url = https://github.com/OpenImageViewer/bintools.git
+[submodule "External/tinyxml2"]
+	path = External/tinyxml2
+	url = https://github.com/leethomason/tinyxml2.git
+[submodule "External/TinyEXIF"]
+	path = External/TinyEXIF
+	url = https://github.com/OpenImageViewer/TinyEXIF.git

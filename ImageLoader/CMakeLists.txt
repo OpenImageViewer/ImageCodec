@@ -10,6 +10,7 @@ set(TargetName ImageLoader)
 add_library (${TargetName} ${sourceFiles} )
 
 target_include_directories(${TargetName} PRIVATE ./Include)
+target_include_directories(${TargetName} PRIVATE ../External/TinyExif)
 
 if ( ${IMCODEC_BUILD_CODEC_BMP})
     target_link_libraries(${TargetName} CodecBMP)
@@ -43,3 +44,5 @@ endif()
 if ( ${IMCODEC_BUILD_CODEC_FREEIMAGE})
     target_link_libraries(${TargetName} CodecFreeImage)
 endif()
+
+target_link_libraries(${TargetName} TinyEXIFstatic)

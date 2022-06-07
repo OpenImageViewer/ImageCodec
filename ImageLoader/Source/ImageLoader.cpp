@@ -2,7 +2,7 @@
 #include "EmbeddedPluginInstaller.h"
 #include <LLUtils/StringUtility.h>
 #include <LLUtils/StopWatch.h>
-//#include <TinyEXIF.h>
+#include <TinyEXIF.h>
 
 namespace IMCodec
 {
@@ -96,6 +96,19 @@ namespace IMCodec
             }
         }
 
+        if (result == ImageResult::Success)
+        {
+            TinyEXIF::EXIFInfo exifInfo(reinterpret_cast<const uint8_t*>(buffer), size);
+            if (exifInfo.Fields)
+            {
+                if (exifInfo.GeoLocation.hasLatLon())
+                {
+                    const_cast<ItemMetaData&>(image->GetImageItem()->metaData).exifData.latitude = exifInfo.GeoLocation.Latitude;
+                    const_cast<ItemMetaData&>(image->GetImageItem()->metaData).exifData.longitude = exifInfo.GeoLocation.Longitude;
+                }
+            }
+        }
+		
         return result;
     }
 

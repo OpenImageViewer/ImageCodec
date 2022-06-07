@@ -18,6 +18,8 @@ namespace IMCodec
 	struct ExifData
 	{
 		int orientation;
+		double longitude;
+		double latitude = -1;
 	};
 
 	struct ItemMetaData

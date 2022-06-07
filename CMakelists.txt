@@ -53,4 +53,7 @@ endif()
 
 
 add_subdirectory(Codecs)
+add_subdirectory(./External/tinyxml2)
+add_subdirectory(./External/tinyEXIF)
+
 add_subdirectory(ImageLoader)
