@@ -21,6 +21,10 @@ set(CMAKE_ASM_COMPILE_OBJECT "-ID:/development/OpenImageViewer/OpenImageViewer/E
 #-I<CMAKE_CURRENT_SOURCE_DIR>../../External/libjpeg-turbo/simd/x86_64 <CMAKE_ASM_NASM_COMPILER> <SOURCE>")
 
 
+option(ENABLE_STATIC "Build static libraries" FALSE)
+set(WITH_FUZZ FALSE)
+
+
 add_subdirectory(${libjpeg-turboFolder} ./external/libjpeg-turbo)
 
 target_include_directories(${TargetName} PRIVATE ${libjpeg-turboFolder})
