@@ -18,8 +18,8 @@ namespace IMCodec
 	struct ExifData
 	{
 		int orientation;
-		double longitude;
-		double latitude = -1;
+		double longitude = std::numeric_limits<double>::max();
+		double latitude = std::numeric_limits<double>::max();
 	};
 
 	struct ItemMetaData
