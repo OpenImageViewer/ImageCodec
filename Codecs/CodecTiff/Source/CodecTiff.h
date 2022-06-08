@@ -173,7 +173,7 @@ namespace IMCodec
                     rowPitch = width * 4;
                     imageItem->data.Allocate(height * rowPitch);
                     TIFFReadRGBAImageOriented(tiff, width, height, reinterpret_cast<uint32*>(imageItem->data.data()), orientation);
-                    imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample * samplesPerPixel);
+                    imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample);
                     break;
                 case PHOTOMETRIC_MINISWHITE:
                 case PHOTOMETRIC_MINISBLACK:

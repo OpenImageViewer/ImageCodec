@@ -36,6 +36,8 @@ namespace IMCodec
         TexelFormat GetTexelFormat() const { return fImageDescriptor->texelFormatDecompressed; }
         TexelFormat GetOriginalTexelFormat() const { return fImageDescriptor->texelFormatStorage; }
         const TexelInfo& GetTexelInfo() const{ return ::IMCodec::GetTexelInfo(GetTexelFormat());}
+        const TexelInfo& GetOriginalTexelInfo() const { return ::IMCodec::GetTexelInfo(GetOriginalTexelFormat());}
+        
 
 
     private:
