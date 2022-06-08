@@ -45,7 +45,7 @@ namespace IMCodec
                     texelFormat = TexelFormat::F_X32;
                     break;
                 default:
-                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported floating point format.");
+                    LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported floating point format.");
                 }
                 break;
 
@@ -53,14 +53,23 @@ namespace IMCodec
             case SAMPLEFORMAT_UINT:
                 switch (bitsPerSample)
                 {
+                case 1:
+                    texelFormat = TexelFormat::I_X1;
+                    break;
                 case 8:
                     texelFormat = TexelFormat::I_X8;
                     break;
                 case 16:
                     texelFormat = TexelFormat::I_X16;
                     break;
+                case 24:
+                    texelFormat = TexelFormat::I_R8_G8_B8;
+                    break;
+                case 32:
+                    texelFormat = TexelFormat::I_R8_G8_B8_A8;
+                    break;
                 default:
-                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported integer format.");
+                    LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported integer format.");
                 }
                 break;
             case SAMPLEFORMAT_INT:
@@ -74,12 +83,12 @@ namespace IMCodec
                     texelFormat = TexelFormat::S_X16;
                     break;
                 default:
-                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported integer format.");
+                    LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported integer format.");
                 }
                 break;
 
             default:
-                LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported type format.");
+                LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported type format.");
             }
 
             return texelFormat;
@@ -99,12 +108,12 @@ namespace IMCodec
             uint16 photoMetric;
             uint16 samplesPerPixel;
             uint16_t orientation;
-            TexelFormat texelFormat = TexelFormat::UNKNOWN;
+            TexelFormat texelFormatDecompressed = TexelFormat::UNKNOWN;
             uint32_t rowPitch;
             uint32 rowsPerStrip;
             uint16_t stripRowCount = 0;
-
-            
+            uint32 stripoffsets;
+            uint16_t planarConfig;
             //field width specification can be found here: http://www.libtiff.org/man/TIFFGetField.3t.html
 
             TIFFGetField(tiff, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
@@ -134,78 +143,106 @@ namespace IMCodec
 
             TIFFGetField(tiff, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
             TIFFGetField(tiff, TIFFTAG_STRIPROWCOUNTS, &stripRowCount);
-
+            TIFFGetField(tiff, TIFFTAG_STRIPOFFSETS, &stripoffsets);
+            TIFFGetField(tiff, TIFFTAG_PLANARCONFIG, &planarConfig);
+            
+         
             uint32_t numberOfStripts = TIFFNumberOfStrips(tiff);
             tmsize_t stripSize = TIFFStripSize(tiff);
             rowPitch = static_cast<uint32_t>(TIFFScanlineSize(tiff));
 
-            switch (photoMetric)
+            imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample * samplesPerPixel);
+            if (imageItem->descriptor.texelFormatStorage != TexelFormat::UNKNOWN)
             {
-            case PHOTOMETRIC_RGB:
-                texelFormat = TexelFormat::I_R8_G8_B8_A8;
-                //override target row pitch - always 32bpp
-                rowPitch = width * 4;
-                imageItem->data.Allocate(height * rowPitch);
-                TIFFReadRGBAImageOriented(tiff, width, height, reinterpret_cast<uint32*>(imageItem->data.data()),orientation);
-                break;
-            case PHOTOMETRIC_MINISWHITE:
-            case PHOTOMETRIC_MINISBLACK:
-                texelFormat = GetTexelFormat(sampleFormat, bitsPerSample);
-                imageItem->data.Allocate(height * rowPitch);
-
-                uint8_t* currensPos = reinterpret_cast<uint8_t*>(imageItem->data.data());
-
-                if (stripSize != rowPitch * rowsPerStrip)
-                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported strip size.");
-
-                for (uint32_t i = 0; i < numberOfStripts; i++)
+                switch (photoMetric)
                 {
-                    TIFFReadEncodedStrip(tiff, i, currensPos, stripSize);
-                    currensPos += rowPitch * rowsPerStrip;
+                case PHOTOMETRIC_RGB:
+                    texelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
+                    //override target row pitch - always 32bpp
+                    rowPitch = width * 4;
+                    imageItem->data.Allocate(height * rowPitch);
+                    TIFFReadRGBAImageOriented(tiff, width, height, reinterpret_cast<uint32*>(imageItem->data.data()), orientation);
+                    break;
+                case PHOTOMETRIC_YCBCR:
+                case PHOTOMETRIC_SEPARATED: //CMYK.
+
+                    LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "YCBCR and CYMK are not implemented, using RGBA as fallback");
+                    texelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
+                    //Read RGBA as a fallback
+                    //override target row pitch - always 32bpp
+                    rowPitch = width * 4;
+                    imageItem->data.Allocate(height * rowPitch);
+                    TIFFReadRGBAImageOriented(tiff, width, height, reinterpret_cast<uint32*>(imageItem->data.data()), orientation);
+                    imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample * samplesPerPixel);
+                    break;
+                case PHOTOMETRIC_MINISWHITE:
+                case PHOTOMETRIC_MINISBLACK:
+                {
+                    texelFormatDecompressed = imageItem->descriptor.texelFormatStorage;
+                    imageItem->data.Allocate(height * rowPitch);
+
+                    uint8_t* currensPos = reinterpret_cast<uint8_t*>(imageItem->data.data());
+
+                    if (stripSize != rowPitch * rowsPerStrip)
+                        LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported strip size.");
+
+                    for (uint32_t i = 0; i < numberOfStripts; i++)
+                    {
+                        TIFFReadEncodedStrip(tiff, i, currensPos, stripSize);
+                        currensPos += rowPitch * rowsPerStrip;
+                    }
+
+
+                }
+                break;
+
+
+                default:
+                    LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported type format.");
+
                 }
 
 
-
-                break;
-            }
-
-
-            imageItem->descriptor.width = width;
-            imageItem->descriptor.height = height;
-            imageItem->descriptor.texelFormatDecompressed = texelFormat;
-            imageItem->descriptor.rowPitchInBytes = rowPitch;
+                imageItem->descriptor.width = width;
+                imageItem->descriptor.height = height;
+                imageItem->descriptor.texelFormatDecompressed = texelFormatDecompressed;
+                imageItem->descriptor.rowPitchInBytes = rowPitch;
 
 
 
-            // Two or more image channels are interleaved
-            // Extract the first one, currently discard the others.
-            // TODO: return extra channel as subimage.				
-            if (samplesPerPixel > 1
-                && (photoMetric == PHOTOMETRIC_MINISWHITE || photoMetric == PHOTOMETRIC_MINISBLACK))
-            {
-
-                //if (photoMetric != PHOTOMETRIC_MINISWHITE && photoMetric != PHOTOMETRIC_MINISBLACK)
-                  //  LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "Extracing channel for non grayscale image is yet to be implemented");
-
-
-                LLUtils::Buffer image(rowPitch / samplesPerPixel * height);
-                size_t destIndex = 0;
-
-                const size_t samplesPerSingleCHannel = rowPitch * height / bytesPerSample / samplesPerPixel;
-                for (size_t i = 0; i < samplesPerSingleCHannel; i++)
+                // Two or more image channels are interleaved
+                // Extract the first one, currently discard the others.
+                // TODO: return extra channel as subimage.				
+                if (samplesPerPixel > 1
+                    && (photoMetric == PHOTOMETRIC_MINISWHITE || photoMetric == PHOTOMETRIC_MINISBLACK))
                 {
-                    const size_t sourceIndex = i * samplesPerPixel * bytesPerSample;
-                    memcpy(reinterpret_cast<uint8_t*>(image.data()) + destIndex, reinterpret_cast<uint8_t*>(imageItem->data.data()) + sourceIndex, bytesPerSample);
-                    destIndex += bytesPerSample;
+
+                    if (photoMetric != PHOTOMETRIC_MINISWHITE && photoMetric != PHOTOMETRIC_MINISBLACK)
+                        LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "Extracing channel for non grayscale image is yet to be implemented");
+
+
+                    LLUtils::Buffer image(rowPitch / samplesPerPixel * height);
+                    size_t destIndex = 0;
+
+                    const size_t samplesPerSingleCHannel = rowPitch * height / bytesPerSample / samplesPerPixel;
+                    for (size_t i = 0; i < samplesPerSingleCHannel; i++)
+                    {
+                        const size_t sourceIndex = i * samplesPerPixel * bytesPerSample;
+                        memcpy(reinterpret_cast<uint8_t*>(image.data()) + destIndex, reinterpret_cast<uint8_t*>(imageItem->data.data()) + sourceIndex, bytesPerSample);
+                        destIndex += bytesPerSample;
+                    }
+                    imageItem->data = std::move(image);
+                    imageItem->descriptor.rowPitchInBytes /= samplesPerPixel;
                 }
-                imageItem->data = std::move(image);
-                imageItem->descriptor.rowPitchInBytes /= samplesPerPixel;
             }
-        
+            else
+            {
+                imageItem = nullptr;
+            }
             return imageItem;
         }
         
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size,[[maybe_unused]] ImageLoadFlags loadFlags, [[maybe_unused]] ImageSharedPtr& out_image) override
         {
             using namespace std;
 
