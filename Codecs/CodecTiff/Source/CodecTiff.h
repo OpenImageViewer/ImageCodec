@@ -151,7 +151,7 @@ namespace IMCodec
             tmsize_t stripSize = TIFFStripSize(tiff);
             rowPitch = static_cast<uint32_t>(TIFFScanlineSize(tiff));
 
-            imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample * samplesPerPixel);
+            imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample);
             if (imageItem->descriptor.texelFormatStorage != TexelFormat::UNKNOWN)
             {
                 switch (photoMetric)
