@@ -101,11 +101,27 @@ namespace IMCodec
             TinyEXIF::EXIFInfo exifInfo(reinterpret_cast<const uint8_t*>(buffer), size);
             if (exifInfo.Fields)
             {
+                ExifData& exifData = const_cast<ItemMetaData&>(image->GetImageItem()->metaData).exifData;
+                exifData.orientation = exifInfo.Orientation;
                 if (exifInfo.GeoLocation.hasLatLon())
                 {
-                    const_cast<ItemMetaData&>(image->GetImageItem()->metaData).exifData.latitude = exifInfo.GeoLocation.Latitude;
-                    const_cast<ItemMetaData&>(image->GetImageItem()->metaData).exifData.longitude = exifInfo.GeoLocation.Longitude;
+                    exifData.latitude = exifInfo.GeoLocation.Latitude;
+                    exifData.longitude = exifInfo.GeoLocation.Longitude;
                 }
+
+                if (exifInfo.GeoLocation.hasAltitude())
+                    exifData.altitude = exifInfo.GeoLocation.Altitude;
+
+                if (exifInfo.GeoLocation.hasRelativeAltitude())
+                    exifData.relativeAltitude= exifInfo.GeoLocation.RelativeAltitude;
+
+
+                exifData.flash.flashValue = exifInfo.Flash;
+                
+                exifData.make = exifInfo.Make;
+                exifData.model = exifInfo.Model;
+                exifData.software = exifInfo.Software;
+                exifData.copyright = exifInfo.Copyright;
             }
         }
 		
