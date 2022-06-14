@@ -54,7 +54,7 @@ namespace IMCodec
         Image(ImageItemSharedPtr imageItem, ImageItemType subImageType) : ImageDesc(&imageItem->descriptor), fSubItemsGroupType(subImageType), fImageItem(imageItem)  {}
         const std::byte* GetBufferAt(int32_t x, int32_t y) const { return fImageItem->data.data()+ (y * GetRowPitchInBytes() + x * GetBitsPerTexel() / CHAR_BIT); }
         const std::byte* GetBuffer() const { return fImageItem->data.data(); }
-        uint32_t GetNumSubImages() const { return fSubImages.size(); }
+        uint32_t GetNumSubImages() const { return static_cast<uint32_t>(fSubImages.size()); }
 
         const ImageDescriptor& GetDescriptor() { return fImageItem->descriptor; }
         const ItemRuntimeData& GetRuntimeData() const { return fImageItem->runtimeData; }
@@ -63,31 +63,7 @@ namespace IMCodec
         const ImageItemSharedPtr& GetImageItem() const { return fImageItem; }
         ImageItemType GetItemType() const { return fImageItem->itemType; }
         
-        bool IsValidSelf() const
-        {
-            return
-                (fSubItemsGroupType != ImageItemType::Unknown || (fImageItem->data != nullptr && fImageItem->descriptor.IsValid())) // is a type of container 
-                ||
-                (fSubItemsGroupType == ImageItemType::Image
-                    && fImageItem->descriptor.IsValid()
-                    && fImageItem->data != nullptr);
-        }
-
-        bool IsValid() const
-        {
-            if (IsValidSelf() == false)
-                return false;
-            
-            for (const auto& subImage : fSubImages)
-            {
-                if (subImage->IsValid() == false)
-                    return false;
-            }
-            
-            return true;
-        }
-
-        ImageSharedPtr GetSubImage(uint16_t index)
+         ImageSharedPtr GetSubImage(uint16_t index)
         {
             if (index >= fSubImages.size())
                 LL_EXCEPTION(LLUtils::Exception::ErrorCode::BadParameters, "index out of range");

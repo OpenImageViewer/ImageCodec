@@ -54,6 +54,7 @@ namespace IMCodec
 	{
 		double loadTime{};
 		double displayTime{};
+		int64_t numUniqueColors = -1;
 		std::wstring pluginUsed;
 	};
 

@@ -52,12 +52,10 @@ namespace IMCodec
 
         if (result == ImageResult::Success)
         {
-            if ((image->IsValid() == true)) // verify image is properly initialized
-            {
-                auto& runtimeData = const_cast<ItemRuntimeData&>(image->GetRuntimeData());
-                runtimeData.loadTime = loadTime;
-                runtimeData.pluginUsed = plugin->GetPluginProperties().pluginDescription.c_str();
-            }
+            auto& runtimeData = const_cast<ItemRuntimeData&>(image->GetRuntimeData());
+            runtimeData.loadTime = loadTime;
+            runtimeData.pluginUsed = plugin->GetPluginProperties().pluginDescription.c_str();
+
         }
         return result;
     }
