@@ -32,9 +32,20 @@ namespace IMCodec
     class CodecGif : public IImagePlugin
     {
     private:
-        PluginProperties mPluginProperties = { L"GifLib image codec","gif" };
+        PluginProperties mPluginProperties = 
+        { 
+            CodecCapabilities::Decode
+            , L"Gif Codec"
+                ,
+                {
+                    {
+                        { L"Graphics Interchange Format"}
+                       ,{ L"gif"}
+                    }
+                }
+        };
     public:
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
             return mPluginProperties;
         }
@@ -185,7 +196,7 @@ namespace IMCodec
         }
 
         //Base abstract methods
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             ImageResult result = ImageResult::Fail;
             int error;

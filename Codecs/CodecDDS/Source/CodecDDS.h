@@ -15,12 +15,24 @@ namespace IMCodec
         PluginProperties mPluginProperties;
     public:
 
-        CodecDDS() : mPluginProperties({ L"NV_DDS image codec","dds"})
+        CodecDDS() : mPluginProperties(
+            {
+                CodecCapabilities::Decode
+                ,L"NV_DDS image codec"
+                ,
+                {
+                    {
+                        { L"DDS - DirectDraw Surface Image"}
+                            ,{ L"dds"}
+                    }
+                }
+            }
+        )
         {
             
         }
         
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
             return mPluginProperties;
         }
@@ -69,7 +81,7 @@ namespace IMCodec
             item.descriptor.rowPitchInBytes = surface.get_width() * decompressedTexelSize;
         }
         
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             using namespace std;
             using namespace nv_dds;

@@ -7,7 +7,7 @@ namespace IMCodec
     class CodecIconFactory
     {
     public:
-        static IImagePlugin* Create(IImageLoader* imageLoader);
+        static IImagePlugin* Create(IImageCodec* imageLoader);
     };
 }
 

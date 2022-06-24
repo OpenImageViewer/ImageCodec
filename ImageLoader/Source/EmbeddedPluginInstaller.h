@@ -1,11 +1,11 @@
 #pragma once
 namespace IMCodec
 {
-    class ImageLoader;
+    class ImageCodec;
     class EmbeddedPluginInstaller
     {
     public:
-        static bool InstallPlugins(ImageLoader* imageLoader);
+        static bool InstallPlugins(ImageCodec* imageLoader);
         
     };
 }

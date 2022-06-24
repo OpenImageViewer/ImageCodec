@@ -53,12 +53,24 @@ namespace IMCodec
     public:
         inline thread_local static bool sIsLoading = false;
 
-        CodecBMP() : mPluginProperties({ L"Embedded BMP codec","bmp"})
+        CodecBMP() : mPluginProperties(
+            {
+                CodecCapabilities::Decode
+                 ,L"BMP image codec"
+                ,
+                {
+                    {
+                        { L"Bitmap image file"}
+                        ,{ L"bmp"}
+                    }
+                }
+            }
+        )
         {
             
         }
         
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
             return mPluginProperties;
         }
@@ -83,7 +95,7 @@ namespace IMCodec
         }
 
         //Base abstract methods
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             using namespace std;
 

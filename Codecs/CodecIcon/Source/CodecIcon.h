@@ -38,17 +38,35 @@ namespace IMCodec
     {
     private:
             PluginProperties mPluginProperties;
-            IImageLoader* fImageLoader = nullptr;
+            IImageCodec* fImageLoader = nullptr;
             static constexpr uint8_t MaskBitCount = 1;
     public:
         inline thread_local static bool sIsLoading = false;
 
-        CodecIcon(IImageLoader* imageLoader) : mPluginProperties({ L"Builtin Icon codec","ico;icon;cur"}), fImageLoader(imageLoader)
+        CodecIcon(IImageCodec* imageLoader) : mPluginProperties(
+            { 
+                 CodecCapabilities::Decode
+                , L"Icon/Cursor Codec"
+                ,
+                {
+                    {
+                        { L"Windows Icon File"}
+                            ,{ L"ico",L"icon"}
+                    }
+                    ,
+                    {
+                        { L"Windows Cursor File"}
+                            ,{ L"cur"}
+                    }
+                }
+                
+            }
+        ), fImageLoader(imageLoader)
         {
             
         }
         
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
             return mPluginProperties;
         }
@@ -64,7 +82,7 @@ namespace IMCodec
             return value;
         }
 
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             using namespace std;
             using namespace IMCodec;
@@ -88,7 +106,7 @@ namespace IMCodec
                     {
                         auto imageItem = std::make_shared<ImageItem>();
                         imageItem->itemType = ImageItemType::Container;
-                        out_image = std::make_shared<Image>(std::make_shared<ImageItem>(), ImageItemType::Image);
+                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Image);
                         out_image->SetNumSubImages(numImages);
                     }
  
@@ -210,8 +228,8 @@ namespace IMCodec
                             // if a PNG icon
                             ImageSharedPtr pngImage;
                             sIsLoading = true;
-                            if (fImageLoader->Load(reinterpret_cast<const std::byte*>(baseAddress + currentEntry->offsetData), currentEntry->imageDataSize, nullptr,
-                                ImageLoadFlags::None,ImageLoaderFlags::None, pngImage) == ImageResult::Success)
+                            if (fImageLoader->Decode(reinterpret_cast<const std::byte*>(baseAddress + currentEntry->offsetData), currentEntry->imageDataSize, nullptr,
+                                ImageLoadFlags::None, ImageLoaderFlags::None, {},pngImage) == ImageResult::Success)
                             {
                                 imageItem = pngImage->GetImageItem();
                             }

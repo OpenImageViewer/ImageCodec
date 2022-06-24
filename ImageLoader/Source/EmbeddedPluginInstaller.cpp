@@ -40,7 +40,7 @@
 
 namespace IMCodec
 {
-    bool EmbeddedPluginInstaller::InstallPlugins(ImageLoader* imageLoader)
+    bool EmbeddedPluginInstaller::InstallPlugins(ImageCodec* imageLoader)
     {
         // install codec by priority, first installed is with the higher priority.
 #if IMCODEC_BUILD_CODEC_BMP == 1

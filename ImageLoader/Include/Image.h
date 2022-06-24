@@ -15,24 +15,24 @@ namespace IMCodec
     class ImageDesc
     {
     public:
-        static constexpr size_t NumBytesInOneByte = CHAR_BIT;
+        static constexpr size_t NumBitsInOneByte = CHAR_BIT;
         ImageDesc(ImageDescriptor* descriptor) : fImageDescriptor(descriptor) {}
         uint32_t GetWidth() const { return fImageDescriptor->width; }
         uint32_t GetHeight() const { return fImageDescriptor->height; }
         uint32_t GetRowPitchInBytes() const { return fImageDescriptor->rowPitchInBytes; }
         ChannelWidth GetBitsPerTexel() const { return GetTexelFormatSize(fImageDescriptor->texelFormatDecompressed); }
-        uint32_t GetBytesPerRowOfPixels() const { return GetWidth() * GetBitsPerTexel() / NumBytesInOneByte; }
-        uint32_t GetRowPitchInTexels() const { return GetRowPitchInBytes() * NumBytesInOneByte / GetBitsPerTexel(); }
+        uint32_t GetBytesPerRowOfPixels() const { return GetWidth() * GetBitsPerTexel() / NumBitsInOneByte; }
+        uint32_t GetRowPitchInTexels() const { return GetRowPitchInBytes() * NumBitsInOneByte / GetBitsPerTexel(); }
         uint32_t GetSlicePitchInBytes() const { return GetRowPitchInBytes() * GetHeight(); }
         uint32_t GetSlicePitchInTexels() const { return GetRowPitchInTexels() * GetHeight(); }
         uint32_t GetTotalPixels() const { return GetWidth() * GetHeight(); }
-        uint32_t GetTotalSizeOfImageTexels() const { return GetTotalPixels() * GetBitsPerTexel() / NumBytesInOneByte; }
-        uint32_t GetBytesPerTexel() const { return GetBitsPerTexel() / NumBytesInOneByte; }
+        uint32_t GetTotalSizeOfImageTexels() const { return GetTotalPixels() * GetBitsPerTexel() / NumBitsInOneByte; }
+        uint32_t GetBytesPerTexel() const { return GetBitsPerTexel() / NumBitsInOneByte; }
         uint32_t GetSizeInMemory() const { return GetRowPitchInBytes() * GetHeight(); }
         LLUtils::Point<uint32_t> GetDimensions() const { return {GetWidth(), GetHeight() }; }
 
         bool GetIsRowPitchNormalized() const { return GetRowPitchInBytes() == GetBytesPerRowOfPixels(); }
-        bool GetIsByteAligned() const { return GetBitsPerTexel() % NumBytesInOneByte == 0; }
+        bool GetIsByteAligned() const { return GetBitsPerTexel() % NumBitsInOneByte == 0; }
         TexelFormat GetTexelFormat() const { return fImageDescriptor->texelFormatDecompressed; }
         TexelFormat GetOriginalTexelFormat() const { return fImageDescriptor->texelFormatStorage; }
         const TexelInfo& GetTexelInfo() const{ return ::IMCodec::GetTexelInfo(GetTexelFormat());}
@@ -52,7 +52,7 @@ namespace IMCodec
 	{
 	public:
         Image(ImageItemSharedPtr imageItem, ImageItemType subImageType) : ImageDesc(&imageItem->descriptor), fSubItemsGroupType(subImageType), fImageItem(imageItem)  {}
-        const std::byte* GetBufferAt(int32_t x, int32_t y) const { return fImageItem->data.data()+ (y * GetRowPitchInBytes() + x * GetBitsPerTexel() / CHAR_BIT); }
+        const std::byte* GetBufferAt(int32_t x, int32_t y) const { return fImageItem->data.data()+ (y * GetRowPitchInBytes() + x * GetBitsPerTexel() / ImageDesc::NumBitsInOneByte); }
         const std::byte* GetBuffer() const { return fImageItem->data.data(); }
         uint32_t GetNumSubImages() const { return static_cast<uint32_t>(fSubImages.size()); }
 
@@ -93,17 +93,4 @@ namespace IMCodec
         std::vector<ImageSharedPtr> fSubImages;
         ImageItemSharedPtr fImageItem;
 	};
-
-	class ImageClient
-	{
-
-	};
-
-
-	class ImageGPU
-	{
-
-	};
-
-	
 }

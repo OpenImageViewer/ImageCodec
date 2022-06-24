@@ -8,13 +8,24 @@ namespace IMCodec
     {
 
     public:
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
-            static PluginProperties pluginProperties = { L"psdlib codec","psd" };
+            static PluginProperties pluginProperties = 
+            { 
+                CodecCapabilities::Decode
+                 ,L"PSDLib Codec"
+                ,
+                {
+                    {
+                        { L"Photosop document"}
+                            ,{ L"psd"}
+                    }
+                }
+            };
             return pluginProperties;
         }
 
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             ImageResult result = ImageResult::Fail;
             psd_context * context = nullptr;

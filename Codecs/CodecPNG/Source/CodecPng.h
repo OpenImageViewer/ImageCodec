@@ -23,6 +23,7 @@ namespace IMCodec
     class CodecPNG : public IImagePlugin
     {
     private:
+        static constexpr int PNG_COLOR_TYPE_UNKNOWN = -1;
         enum class PngFormatFlags : png_uint_32
         {
               None = 0 << 0
@@ -38,14 +39,25 @@ namespace IMCodec
 
         };
 
-		LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS(PngFormatFlags)
+        LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS(PngFormatFlags)
 
-            
+
     public:
 
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
-            static PluginProperties pluginProperties = { L"PNG plugin codec","png" };
+            static PluginProperties pluginProperties =
+            {
+                CodecCapabilities::Decode | CodecCapabilities::Encode
+                , L"PNG Codec"
+                ,
+                {
+                    {
+                        { L"Portable Network Graphics"}
+                       ,{ L"png"}
+                    }
+                }
+            };
             return pluginProperties;
         }
 
@@ -53,7 +65,7 @@ namespace IMCodec
         {
 
         }
-            
+
         void pngError(png_const_structrp png_ptr,
             png_const_charp error_message)
         {
@@ -108,7 +120,7 @@ namespace IMCodec
         }
 
         //Base abstract methods
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             using namespace std;
             ImageResult result = ImageResult::Fail;
@@ -158,7 +170,7 @@ namespace IMCodec
                     png_uint_16 delaydenom{};
                     png_byte disposeOp{};
                     png_byte blendOp{};
-             
+
                     png_byte colorType = png_get_color_type(png_ptr, info_ptr);
 
                     if (colorType == PNG_COLOR_TYPE_RGB)
@@ -254,5 +266,74 @@ namespace IMCodec
             }
             return result;
         }
+
+        static void PngWriteCallback(png_structp  png_ptr, png_bytep data, png_size_t length)
+        {
+            std::vector<uint8_t>* p = (std::vector<uint8_t>*)png_get_io_ptr(png_ptr);
+            p->insert(p->end(), data, data + length);
+        }
+
+
+        struct TPngDestructor {
+            png_struct* p;
+            TPngDestructor(png_struct* p) : p(p) {}
+            ~TPngDestructor() { if (p) { png_destroy_write_struct(&p, NULL); } }
+        };
+
+
+
+        int GetPixelFormat(TexelFormat texelFormat)
+        {
+            switch (texelFormat)
+            {
+            case TexelFormat::I_R8_G8_B8_A8:
+                return PNG_COLOR_TYPE_RGBA;
+            case TexelFormat::I_R8_G8_B8:
+                return PNG_COLOR_TYPE_RGB;
+            default:
+                return PNG_COLOR_TYPE_UNKNOWN;
+            }
+        }
+
+        ImageResult Encode([[maybe_unused]] const ImageSharedPtr& image, const Parameters& EncodeParametrs
+            , [[maybe_unused]] LLUtils::Buffer& encodedBuffer) override
+        {
+
+            auto texelFormat = GetPixelFormat(image->GetTexelFormat());
+
+            if (texelFormat != PNG_COLOR_TYPE_UNKNOWN)
+            {
+                constexpr int compressionLevel = 6;
+                png_structp p = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+                png_infop info_ptr = png_create_info_struct(p);
+
+                TPngDestructor destroyPng(p);
+
+                png_set_IHDR(p, info_ptr, image->GetWidth(), image->GetHeight(), 8
+                    , texelFormat
+                    , PNG_INTERLACE_NONE
+                    , PNG_COMPRESSION_TYPE_DEFAULT
+                    , PNG_FILTER_TYPE_DEFAULT);
+
+                png_set_compression_level(p, compressionLevel);
+
+
+                std::vector<uint8_t> pngEncodedBuffer;
+
+                std::vector<uint8_t*> rows(image->GetHeight());
+                for (size_t y = 0; y < image->GetHeight(); ++y)
+                    rows[y] = (uint8_t*)image->GetBuffer() + y * image->GetRowPitchInBytes();
+
+                png_set_rows(p, info_ptr, rows.data());
+                png_set_write_fn(p, &pngEncodedBuffer, PngWriteCallback, nullptr);
+                png_write_png(p, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
+                encodedBuffer = { reinterpret_cast<const std::byte*>(pngEncodedBuffer.data()) , pngEncodedBuffer.size() };
+
+                return ImageResult::Success;
+            }
+            else
+                return ImageResult::FormatNotSupported;
+        }
+
     };
 }

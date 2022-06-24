@@ -3,7 +3,7 @@
 
 namespace IMCodec
 {
-    IImagePlugin* CodecIconFactory::Create(IImageLoader* imageLoader)
+    IImagePlugin* CodecIconFactory::Create(IImageCodec* imageLoader)
     {
         return new CodecIcon(imageLoader);
     }

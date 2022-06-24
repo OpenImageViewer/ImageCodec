@@ -10,18 +10,31 @@ namespace IMCodec
     {
 
     public:
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
             static PluginProperties pluginProperties =
             {
-                L"FreeImage plugin",
-                "BMP;ICO;JPEG;JNG;KOALA;LBM;IFF;LBM;MNG;PBM;PBMRAW;PCD;PCX;PGM;PGMRAW;PNG;PPM;PPMRAW;RAS;TGA;TIFF;TIF;WBMP;PSD;CUT;XBM;XPM;DDS;GIF;HDR;FAXG3;SGI;EXR;J2K;JP2;PFM;PICT;RAW;WEBP;JXR;CUR"
-                };
+                CodecCapabilities::Decode | CodecCapabilities::BulkCodec
+                 , L"Free image codec"
+                ,
+                {
+                    {
+                        { L"Image formats collection"}
+
+                        ,{ L"BMP",L"ICO",L"JPEG",L"JNG",L"KOALA",L"LBM",L"IFF",L"MNG",L"PBM",L"PBMRAW",L"PCD",L"PGM",L"PGMRAW",L"PNG"
+                          ,L"PPM",L"PPMRAW",L"RAS",L"TGA",L"TIFF",L"TIF",L"WBMP",L"PSD",L"CUT",L"XBM",L"XPM",L"DDS",L"GIF",L"HDR",L"FAXG3"
+                           ,L"SGI",L"EXR",L"J2K",L"JP2",L"PFM",L"PICT",L"RAW",L"WEBP",L"JXR",L"CUR"
+                        }
+                    }
+                }
+            };
+
+                
             
             return pluginProperties;
         }
 
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             FIBITMAP* freeImageHandle;
             ImageResult result = ImageResult::Fail;

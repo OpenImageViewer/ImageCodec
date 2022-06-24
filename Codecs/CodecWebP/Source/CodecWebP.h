@@ -13,13 +13,25 @@ namespace IMCodec
     {
 
     public:
-        PluginProperties& GetPluginProperties() override
+        const PluginProperties& GetPluginProperties() override
         {
-            static PluginProperties pluginProperties = { L"WebP codec","webp" };
+            static PluginProperties pluginProperties = 
+            { 
+                CodecCapabilities::Decode
+                 , L"WebP Codec"
+                ,
+                {
+                    {
+                        { L"WebP image file"}
+                            ,{ L"webp"}
+                    }
+                }
+
+            };
             return pluginProperties;
         }
 
-        ImageResult LoadMemoryImageFile(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, ImageSharedPtr& out_image) override
+        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             ImageResult result = ImageResult::Fail;
 
@@ -93,33 +105,34 @@ namespace IMCodec
                     }
                     result = ImageResult::Success;
                 }
-            }
-            else
-            {
-                //Decode an Image
-                int width;
-                int height;
-                if (WebPGetInfo(reinterpret_cast<const std::uint8_t*>(buffer), size, &width, &height) != 0)
+                else
                 {
-                    const size_t decodedBufferSize = width * height * 4;
-                    LLUtils::Buffer decodedBuffer(decodedBufferSize);
-
-                    if (WebPDecodeBGRAInto(reinterpret_cast<const std::uint8_t*>(buffer), size, reinterpret_cast<uint8_t*>(decodedBuffer.data()),
-                        decodedBufferSize, width * 4) != nullptr)
+                    //Decode an Image
+                    int width;
+                    int height;
+                    if (WebPGetInfo(reinterpret_cast<const std::uint8_t*>(buffer), size, &width, &height) != 0)
                     {
-                        auto imageItem = std::make_shared<ImageItem>();
-                        imageItem->itemType = ImageItemType::Image;
-                        imageItem->descriptor.height = height;
-                        imageItem->descriptor.width = width;
-                        imageItem->descriptor.rowPitchInBytes = width * 4;
-                        imageItem->descriptor.texelFormatStorage = TexelFormat::I_B8_G8_R8_A8;
-                        imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
-                        imageItem->data = std::move(decodedBuffer);
-                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
-                        result = ImageResult::Success;
+                        const size_t decodedBufferSize = width * height * 4;
+                        LLUtils::Buffer decodedBuffer(decodedBufferSize);
+
+                        if (WebPDecodeBGRAInto(reinterpret_cast<const std::uint8_t*>(buffer), size, reinterpret_cast<uint8_t*>(decodedBuffer.data()),
+                            decodedBufferSize, width * 4) != nullptr)
+                        {
+                            auto imageItem = std::make_shared<ImageItem>();
+                            imageItem->itemType = ImageItemType::Image;
+                            imageItem->descriptor.height = height;
+                            imageItem->descriptor.width = width;
+                            imageItem->descriptor.rowPitchInBytes = width * 4;
+                            imageItem->descriptor.texelFormatStorage = TexelFormat::I_B8_G8_R8_A8;
+                            imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_B8_G8_R8_A8;
+                            imageItem->data = std::move(decodedBuffer);
+                            out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
+                            result = ImageResult::Success;
+                        }
                     }
                 }
             }
+          
            return result;
        }
     };
