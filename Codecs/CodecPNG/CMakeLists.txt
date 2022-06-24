@@ -10,14 +10,18 @@ file(GLOB_RECURSE sourceFiles
 set(TargetName CodecPNG)
 add_library (${TargetName} ${sourceFiles} )
 
-
+#ZLIB
+option(ZLIB_BUILD_BINARIES "Build zlib test sample and example" OFF)
 set(LibPNGFolder ../../External/libpng)
 set(zlibFolder ../../External/zlib)
+
 add_subdirectory(${zlibFolder} ./external/zlib)
 
 set(ZLIB_INCLUDE_DIR ${zlibFolder})
 set(ZLIB_LIBRARY zlib)
 
+
+#LibPNG
 option(PNG_SHARED    "Build shared lib" ON)
 option(PNG_STATIC    "Build static lib" OFF)
 option(PNG_TESTS     "Build libpng tests" OFF)

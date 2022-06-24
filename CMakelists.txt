@@ -53,7 +53,10 @@ endif()
 
 
 add_subdirectory(Codecs)
+option(tinyxml2_BUILD_TESTING "Build tests for tinyxml2" OFF)
 add_subdirectory(./External/tinyxml2)
+
+option(TINY_EXIF_BUILD_DEMO "build demo binary" OFF)
 add_subdirectory(./External/tinyEXIF)
 
 add_subdirectory(ImageLoader)
