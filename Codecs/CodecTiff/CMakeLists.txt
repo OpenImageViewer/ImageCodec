@@ -9,6 +9,7 @@ file(GLOB_RECURSE sourceFiles
 set(TargetName CodecTiff)
 add_library (${TargetName} ${sourceFiles} )
 set(TIFF_BUILD_SHARED_LIBS TRUE)
+set(TIFF_BUILD_CXX FALSE)
 set(LibTiffFolder ../../External/libtiff)
 add_subdirectory(${LibTiffFolder} ./external/libtiff)
 target_include_directories(${TargetName} PRIVATE ${LibTiffFolder}/libtiff)
