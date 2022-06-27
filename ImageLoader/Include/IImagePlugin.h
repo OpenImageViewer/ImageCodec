@@ -79,11 +79,11 @@ namespace IMCodec
         /// <returns>ImageResult::Success on success</returns>
         virtual ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) = 0;
 
-        virtual ImageResult Encode([[maybe_unused]] const ImageSharedPtr& image, const Parameters& EncodeParametrs
+        virtual ImageResult Encode([[maybe_unused]] const ImageSharedPtr& image, [[maybe_unused]] const Parameters& EncodeParametrs
             , [[maybe_unused]] LLUtils::Buffer& encodedBuffer) { return ImageResult::NotImplemented; }
 
         
-        virtual ImageResult GetEncoderParameters(ListParameterDescriptors& out_encodeParameters) { return ImageResult::NotImplemented; }
+        virtual ImageResult GetEncoderParameters([[maybe_unused]] ListParameterDescriptors& out_encodeParameters) { return ImageResult::NotImplemented; }
         virtual const PluginProperties& GetPluginProperties() = 0;
     };
 
