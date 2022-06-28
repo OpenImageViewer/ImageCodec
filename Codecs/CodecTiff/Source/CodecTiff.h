@@ -63,14 +63,18 @@ namespace IMCodec
                 case SAMPLEFORMAT_UINT:
                     switch (samplesPerPixel)
                     {
-                    case 1:
-
+                    case 3:
                         switch (bitsPerSample)
                         {
-                        case 24:
+                        case 8:
                             texelFormat = TexelFormat::I_R8_G8_B8;
                             break;
-                        case 32:
+                        }
+                        break;
+                    case 4:
+                        switch (bitsPerSample)
+                        {
+                        case 8:
                             texelFormat = TexelFormat::I_R8_G8_B8_A8;
                             break;
                         }
@@ -159,7 +163,6 @@ namespace IMCodec
             uint16 photoMetric{};
             uint16 samplesPerPixel{};
             uint16_t orientation{};
-            TexelFormat texelFormatDecompressed = TexelFormat::UNKNOWN;
             uint32_t rowPitch{};
             uint32 rowsPerStrip{};
             uint16_t stripRowCount{};
@@ -328,7 +331,7 @@ namespace IMCodec
                 int currentSubImage = 0;
 
                 auto firstImageItemChannles = GetImage(tiff);
-                firstImageItem = GetImage(tiff).at(0);
+                firstImageItem = firstImageItemChannles.at(0);
 
                 if (firstImageItemChannles.size() > 1)
                 {
