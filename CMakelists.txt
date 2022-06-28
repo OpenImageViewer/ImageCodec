@@ -67,3 +67,7 @@ option(TINY_EXIF_BUILD_DEMO "build demo binary" OFF)
 add_subdirectory(./External/tinyEXIF)
 
 add_subdirectory(ImageLoader)
+
+if (IMCODEC_BUILD_EXAMPLES)
+  add_subdirectory(Example)
+endif()

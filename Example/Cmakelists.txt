@@ -1,0 +1,13 @@
+cmake_minimum_required (VERSION 3.8)
+
+#Image Codec
+set(CMAKE_CXX_STANDARD 20)
+
+file(GLOB_RECURSE sourceFiles
+    "*.h"
+    "*.cpp"
+)
+
+add_executable(ImageLoaderExample ${sourceFiles})
+target_include_directories(ImageLoaderExample PRIVATE ./Imageloader/Include)
+target_link_libraries(ImageLoaderExample PRIVATE ImageLoader)
