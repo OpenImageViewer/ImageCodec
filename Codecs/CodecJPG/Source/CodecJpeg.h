@@ -94,6 +94,7 @@ namespace IMCodec
                 if (tjDecompress2(ftjHandle, const_cast< uint8_t*>(reinterpret_cast<const uint8_t*>( buffer)), jpegSize, reinterpret_cast<unsigned char*>(imageItem->data.data()), width, width * bytesPerPixel, height, TJPF_RGBA, 0) != -1)
                 {
                     imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
+                    imageItem->descriptor.texelFormatStorage = TexelFormat::I_R8_G8_B8;
                     imageItem->descriptor.width = width;
                     imageItem->descriptor.height = height;
                     imageItem->descriptor.rowPitchInBytes = bytesPerPixel * width;
