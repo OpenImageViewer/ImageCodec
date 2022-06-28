@@ -31,7 +31,7 @@ namespace IMCodec
 
             ListParameterDescriptors parametersDescriptors;
             
-            if (false)
+#if IMCODEC_NETSETTINGS_EXTENSION_EXISTS
             if (choosenPlugin->GetEncoderParameters(parametersDescriptors) == ImageResult::Success)
             {
 
@@ -71,12 +71,13 @@ namespace IMCodec
                     settingsContext.SetVisible(true);
                 }
             }
-
+#endif
             return choosenPlugin->Encode(image, encoderParameters, encoded);
         }
         return ImageResult::NotImplemented;
     }
 
+#if IMCODEC_NETSETTINGS_EXTENSION_EXISTS
      void ImageCodec::NetSettingsCallback_(ItemChangedArgs* args)
      {
          reinterpret_cast<ImageCodec*>(args->userData)->NetSettingsCallback(args);
@@ -120,7 +121,7 @@ namespace IMCodec
              }
          }
      }
-
+#endif
 
     IImagePlugin* ImageCodec::GetFirstPlugin(const std::wstring& hint) const
     {
@@ -167,7 +168,7 @@ namespace IMCodec
         if (result == ImageResult::Success)
         {
             auto& runtimeData = const_cast<ItemRuntimeData&>(image->GetRuntimeData());
-            runtimeData.loadTime = loadTime;
+            runtimeData.loadTime = static_cast<double>(loadTime);
             runtimeData.pluginUsed = plugin->GetPluginProperties().pluginDescription.c_str();
 
         }
@@ -213,7 +214,7 @@ namespace IMCodec
 
         if (result == ImageResult::Success)
         {
-            TinyEXIF::EXIFInfo exifInfo(reinterpret_cast<const uint8_t*>(buffer), size);
+            TinyEXIF::EXIFInfo exifInfo(reinterpret_cast<const uint8_t*>(buffer), static_cast<unsigned int>(size));
             if (exifInfo.Fields)
             {
                 ExifData& exifData = const_cast<ItemMetaData&>(image->GetImageItem()->metaData).exifData;
@@ -228,7 +229,7 @@ namespace IMCodec
                     exifData.altitude = exifInfo.GeoLocation.Altitude;
 
                 if (exifInfo.GeoLocation.hasRelativeAltitude())
-                    exifData.relativeAltitude= exifInfo.GeoLocation.RelativeAltitude;
+                    exifData.relativeAltitude = static_cast<int8_t>(exifInfo.GeoLocation.RelativeAltitude);
 
 
                 exifData.flash.flashValue = exifInfo.Flash;

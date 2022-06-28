@@ -4,8 +4,11 @@
 #include <unordered_map>
 #include <chrono>
 #include <vector>
-#include <NetSettings/GuiProvider.h>
 
+#if __has_include (<NetSettings/GuiProvider.h>)
+    #include <NetSettings/GuiProvider.h>
+    #define IMCODEC_NETSETTINGS_EXTENSION_EXISTS 1
+#endif
 
 namespace IMCodec
 {
@@ -42,6 +45,7 @@ namespace IMCodec
         ListPlugin fListPlugins;
 
 
+#if IMCODEC_NETSETTINGS_EXTENSION_EXISTS
         static void NetSettingsCallback_(ItemChangedArgs* args);
         void NetSettingsCallback(ItemChangedArgs* args);
 
@@ -56,6 +60,6 @@ namespace IMCodec
             netsettings_SetVisible_func SetVisible;
             netsettings_SaveSettings_func  SaveSettings;
         } settingsContext{};
-
+#endif
     };
 }

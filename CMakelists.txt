@@ -1,11 +1,12 @@
-#Image Codec
 cmake_minimum_required (VERSION 3.8)
+project(ImageCodec)
 
+#Image Codec
 set(CMAKE_CXX_STANDARD 20)
 
 include_directories(./Image/Include)
 include_directories(./Imageloader/Include)
-include_directories(../External/LLUtils/Include)
+include_directories(./External/LLUtils/Include)
 
 
 option(IMCODEC_BUILD_CODEC_PSD "Build Codec PSD" TRUE)
@@ -18,6 +19,8 @@ option(IMCODEC_BUILD_CODEC_ICON "Build Codec Icon" TRUE)
 option(IMCODEC_BUILD_CODEC_TIFF "Build Codec TIFF" TRUE)
 option(IMCODEC_BUILD_CODEC_WEBP "Build Codec WEBP" TRUE)
 option(IMCODEC_BUILD_CODEC_FREEIMAGE "Build Codec FREEIMAGE" FALSE)
+
+option(IMCODEC_BUILD_EXAMPLES "Build Codec FREEIMAGE" TRUE)
 
 
 if ( ${IMCODEC_BUILD_CODEC_PSD})
@@ -49,6 +52,10 @@ if ( ${IMCODEC_BUILD_CODEC_BMP})
 endif()
 if ( ${IMCODEC_BUILD_CODEC_FREEIMAGE})
 	add_definitions(-DIMCODEC_BUILD_CODEC_FREEIMAGE=1)
+endif()
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+	add_compile_definitions(NOMINMAX)
 endif()
 
 

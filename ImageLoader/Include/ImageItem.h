@@ -2,6 +2,7 @@
 #include <vector>
 #include "ImageDescriptor.h"
 #include <LLUtils/Buffer.h>
+#include <limits>
 namespace IMCodec
 {
 	enum class ImageItemType
@@ -21,7 +22,7 @@ namespace IMCodec
 		double longitude = std::numeric_limits<double>::max();
 		double latitude = std::numeric_limits<double>::max();
 		double altitude = std::numeric_limits<double>::max();
-		int8_t relativeAltitude = std::numeric_limits<int8_t>::max();
+		int8_t relativeAltitude = std::numeric_limits<int8_t>::max(); // 0 = Above Sea Level, 1 = Below Sea Level
 		std::string make;
 		std::string model;
 		std::string software;
