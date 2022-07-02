@@ -17,7 +17,9 @@ namespace IMCodec
 
         CodecDDS() : mPluginProperties(
             {
-                CodecCapabilities::Decode
+                // {252347B1-91E7-4C5C-8F06-726B0A52DE6D}
+                { 0x252347b1, 0x91e7, 0x4c5c, { 0x8f, 0x6, 0x72, 0x6b, 0xa, 0x52, 0xde, 0x6d } }
+                ,CodecCapabilities::Decode
                 ,L"NV_DDS image codec"
                 ,
                 {
@@ -85,7 +87,7 @@ namespace IMCodec
         {
             using namespace std;
             using namespace nv_dds;
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
 
             class membuf : public std::streambuf
             {

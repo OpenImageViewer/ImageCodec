@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Image.h>
+#include <ImageLoader.h>
 
 namespace IMCodec
 {
@@ -45,7 +46,11 @@ namespace IMCodec
 
         CodecIcon(IImageCodec* imageLoader) : mPluginProperties(
             { 
-                 CodecCapabilities::Decode
+                // {1599FC40-58DF-4950-A49B-2880E728CE00}
+
+                { 0x1599fc40, 0x58df, 0x4950, { 0xa4, 0x9b, 0x28, 0x80, 0xe7, 0x28, 0xce, 0x0 } }
+
+                 ,CodecCapabilities::Decode
                 , L"Icon/Cursor Codec"
                 ,
                 {
@@ -86,7 +91,7 @@ namespace IMCodec
         {
             using namespace std;
             using namespace IMCodec;
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
             try
             {  
                 if (size > sizeof(IcoDir))
@@ -95,7 +100,7 @@ namespace IMCodec
                     const uint8_t* baseAddress = reinterpret_cast<const uint8_t*>(icoFile);
                     
                     if (icoFile->icoDir.reserved != 0 ||  (icoFile->icoDir.type != 1 && icoFile->icoDir.type != 2))
-                        return ImageResult::Fail; // Not an Ico file 
+                        return ImageResult::UnknownError; // Not an Ico file 
 
                     
                     const uint16_t numImages = icoFile->icoDir.numImages;
@@ -228,8 +233,11 @@ namespace IMCodec
                             // if a PNG icon
                             ImageSharedPtr pngImage;
                             sIsLoading = true;
-                            if (fImageLoader->Decode(reinterpret_cast<const std::byte*>(baseAddress + currentEntry->offsetData), currentEntry->imageDataSize, nullptr,
-                                ImageLoadFlags::None, ImageLoaderFlags::None, {},pngImage) == ImageResult::Success)
+                            static thread_local ImageLoader helper;
+                            ImageResult pngRes = helper.Decode(reinterpret_cast<const std::byte*>(baseAddress + currentEntry->offsetData), currentEntry->imageDataSize
+                                , ImageLoadFlags::None, {}, L"png", PluginTraverseMode::AnyPlugin, pngImage);
+
+                            if (pngRes == ImageResult::Success)
                             {
                                 imageItem = pngImage->GetImageItem();
                             }
@@ -259,13 +267,13 @@ namespace IMCodec
                         }
                    
                     }
-                    result = error ? ImageResult::Fail : ImageResult::Success;
+                    result = error ? ImageResult::UnknownError : ImageResult::Success;
                 }
             }
             catch (...)
             {
                 sIsLoading = false;
-                result = ImageResult::Fail;
+                result = ImageResult::UnknownError;
             }
 
             

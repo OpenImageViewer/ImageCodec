@@ -4,6 +4,7 @@
 #include <IImagePlugin.h>
 #include <gif_lib.h>
 #include <Image.h>
+#include <LLUtils/StopWatch.h>
 namespace IMCodec
 {
 
@@ -34,7 +35,9 @@ namespace IMCodec
     private:
         PluginProperties mPluginProperties = 
         { 
-            CodecCapabilities::Decode
+            // {1D076943-F907-426A-8DC6-838B8CCE320C}
+             { 0x1d076943, 0xf907, 0x426a, { 0x8d, 0xc6, 0x83, 0x8b, 0x8c, 0xce, 0x32, 0xc } }
+            ,CodecCapabilities::Decode
             , L"Gif Codec"
                 ,
                 {
@@ -198,7 +201,9 @@ namespace IMCodec
         //Base abstract methods
         ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
-            ImageResult result = ImageResult::Fail;
+            LLUtils::StopWatch stopWatch(true);
+            
+            ImageResult result = ImageResult::UnknownError;
             int error;
             GifReadContext context{ buffer, size, 0 };
 
@@ -224,6 +229,9 @@ namespace IMCodec
 
                 auto framesData = GetFramesData(gif);
                 auto frameBuffers = BakeGifFrames(gif, framesData);
+
+                double loadTIme = -1;
+
                 for (auto imageIndex = 0; imageIndex < gif->ImageCount; imageIndex++)
                 {
                     const auto& currentFrameData = framesData.at(imageIndex);
@@ -239,7 +247,18 @@ namespace IMCodec
                     imageItem->descriptor.rowPitchInBytes = IMCodec::GetTexelFormatSize(imageItem->descriptor.texelFormatDecompressed) * imageItem->descriptor.width / CHAR_BIT;
                     imageItem->data = std::move(frameBuffers.at(imageIndex));
                     imageItem->animationData.delayMilliseconds = currentFrameData.gcb.DelayTime * 10; // multiply by 10 to convert centiseconds to milliseconds.
+                    imageItem->processData.pluginUsed = GetPluginProperties().id;
 
+                    //Estimation on frame loading time, since frame are loaded together is a bit cumbersome to precisly time the 'load time'
+
+                    if (loadTIme == -1)
+                    {
+                        using namespace LLUtils;
+                        loadTIme = static_cast<double>(stopWatch.GetElapsedTimeReal(StopWatch::TimeUnit::Milliseconds));
+                    }
+
+                    imageItem->processData.processTime = loadTIme;
+                    
                     if (isMultiImage)
                         out_image->SetSubImage(imageIndex, std::make_shared<Image>(imageItem, ImageItemType::Unknown));
                     else

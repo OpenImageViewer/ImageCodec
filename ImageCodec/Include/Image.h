@@ -1,6 +1,5 @@
 #pragma once
 #include "ImageDescriptor.h"
-#include "ImageCommon.h"
 #include "ImageItem.h"
 #include <LLUtils/Point.h>
 
@@ -57,9 +56,9 @@ namespace IMCodec
         uint32_t GetNumSubImages() const { return static_cast<uint32_t>(fSubImages.size()); }
 
         const ImageDescriptor& GetDescriptor() { return fImageItem->descriptor; }
-        const ItemRuntimeData& GetRuntimeData() const { return fImageItem->runtimeData; }
+        //const ItemRuntimeData& GetRuntimeData() const { return fImageItem->runtimeData; }
         const AnimationData& GetAnimationData() const { return fImageItem->animationData; }
-        const ItemMetaData& GetMetaData() const { return fImageItem->metaData; }
+        const ItemProcessData& GetProcessData() const { return fImageItem->processData; }
         const ImageItemSharedPtr& GetImageItem() const { return fImageItem; }
         ImageItemType GetItemType() const { return fImageItem->itemType; }
         

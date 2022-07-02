@@ -14,7 +14,9 @@ namespace IMCodec
         {
             static PluginProperties pluginProperties =
             {
-                CodecCapabilities::Decode | CodecCapabilities::BulkCodec
+                // {0CA17E19-92E7-4926-A8FC-34E7086BA27F}
+                 { 0xca17e19, 0x92e7, 0x4926, { 0xa8, 0xfc, 0x34, 0xe7, 0x8, 0x6b, 0xa2, 0x7f } }
+                ,CodecCapabilities::Decode | CodecCapabilities::BulkCodec
                  , L"Free image codec"
                 ,
                 {
@@ -37,7 +39,7 @@ namespace IMCodec
         ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             FIBITMAP* freeImageHandle;
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
 
             using namespace IMCodec;
 

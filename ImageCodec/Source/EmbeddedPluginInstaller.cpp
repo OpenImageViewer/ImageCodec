@@ -1,5 +1,5 @@
 #include "EmbeddedPluginInstaller.h"
-#include "ImageLoader.h"
+#include "ImageCodec.h"
 
 //TODO: Take configuration out to a new file
 #if IMCODEC_BUILD_CODEC_PSD == 1
@@ -9,15 +9,19 @@
 #if IMCODEC_BUILD_CODEC_BMP == 1
 #include "../../Codecs/CodecBMP/Include/CodecBMPFactory.h"
 #endif
+
 #if IMCODEC_BUILD_CODEC_JPG == 1
     #include "../../Codecs/CodecJPG/Include/CodecJPGFactory.h"
 #endif
+
 #if IMCODEC_BUILD_CODEC_PNG == 1
     #include "../../Codecs/CodecPNG/Include/CodecPNGFactory.h"
 #endif
+
 #if IMCODEC_BUILD_CODEC_DDS == 1
 #include "../../Codecs/CodecDDS/Include/CodecDDSFactory.h"
 #endif
+
 #if IMCODEC_BUILD_CODEC_FREEIMAGE == 1
     #include "../../Codecs/CodecFreeImage/Include/CodecFreeImageFactory.h"
 #endif

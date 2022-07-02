@@ -12,7 +12,9 @@ namespace IMCodec
         {
             static PluginProperties pluginProperties = 
             { 
-                CodecCapabilities::Encode | CodecCapabilities::Decode 
+                // {7798CB6A-5546-4EAD-BA95-A114C8520D0D}
+                { 0x7798cb6a, 0x5546, 0x4ead, { 0xba, 0x95, 0xa1, 0x14, 0xc8, 0x52, 0xd, 0xd } }
+                , CodecCapabilities::Encode | CodecCapabilities::Decode 
                 ,L"TurboJpeg" 
                 ,
                 {
@@ -60,7 +62,7 @@ namespace IMCodec
         ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags,const Parameters& params, ImageSharedPtr& out_image) override
         {
             static thread_local tjhandle ftjHandle = tjInitDecompress();
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
 /*
             int canvasWidth = 0;
             int canvasHeight = 0;
@@ -125,7 +127,7 @@ namespace IMCodec
         ImageResult Encode(const ImageSharedPtr& image, const IMCodec::Parameters& params, LLUtils::Buffer& encodedBuffer) override
         {
             const int pixelFormat = GetPixelFormat(image->GetTexelFormat());
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
 
             if (pixelFormat != TJPF_UNKNOWN)
             {

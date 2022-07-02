@@ -17,7 +17,9 @@ namespace IMCodec
         {
             static PluginProperties pluginProperties = 
             { 
-                CodecCapabilities::Decode
+                // {3DEF6662-48D7-4D61-9D96-C15FEDA9E4F4}
+                { 0x3def6662, 0x48d7, 0x4d61, { 0x9d, 0x96, 0xc1, 0x5f, 0xed, 0xa9, 0xe4, 0xf4 } }
+                , CodecCapabilities::Decode
                  , L"WebP Codec"
                 ,
                 {
@@ -33,7 +35,7 @@ namespace IMCodec
 
         ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
 
             WebPData webp_data
             {

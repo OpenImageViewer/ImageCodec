@@ -48,7 +48,11 @@ namespace IMCodec
         {
             static PluginProperties pluginProperties =
             {
-                CodecCapabilities::Decode | CodecCapabilities::Encode
+                // {22A82F61-4C92-432E-93EB-635E24545306}
+
+                { 0x22a82f61, 0x4c92, 0x432e, { 0x93, 0xeb, 0x63, 0x5e, 0x24, 0x54, 0x53, 0x6 } }
+
+                , CodecCapabilities::Decode | CodecCapabilities::Encode
                 , L"PNG Codec"
                 ,
                 {
@@ -123,7 +127,7 @@ namespace IMCodec
         ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             using namespace std;
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
             png_image image{};
             /* Initialize the 'png_image' structure. */
             image.version = PNG_IMAGE_VERSION;

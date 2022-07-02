@@ -7,6 +7,7 @@
 #include "TiffClientFunctions.h"
 #include "TiffFile.h"
 #include <LLUtils/Exception.h>
+#include <IImagePlugin.h>
 
 namespace IMCodec
 {
@@ -17,8 +18,10 @@ namespace IMCodec
     public:
 
         CodecTiff() : mPluginProperties(
-            { 
-                CodecCapabilities::Decode
+            {
+                // {3AF4C3A1-FA72-4394-8B7C-68412A3433E3}
+                { 0x3af4c3a1, 0xfa72, 0x4394, { 0x8b, 0x7c, 0x68, 0x41, 0x2a, 0x34, 0x33, 0xe3 } }
+                , CodecCapabilities::Decode
                 , L"LibTiff image codec"
                 ,
                 {
@@ -27,9 +30,9 @@ namespace IMCodec
                         ,{ L"tif",L"tiff"}
                     }
                 }
-                
+
             }
-                )
+        )
         {
 
         }
@@ -331,7 +334,7 @@ namespace IMCodec
         {
             using namespace std;
 
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
             TiffFile tifFile(reinterpret_cast<const uint8_t*>(buffer), size);
             TIFF* tiff = tifFile.GetTiff();
             ImageItemSharedPtr firstImageItem;

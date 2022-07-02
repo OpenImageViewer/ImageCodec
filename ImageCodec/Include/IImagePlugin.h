@@ -9,6 +9,18 @@
 
 namespace IMCodec
 {
+    /// <summary>
+    /// Flags for an instace of IImagePlugin
+    /// </summary>
+    enum class ImageLoadFlags
+    {
+          None = 0 << 0
+        , Preview = 1 << 0
+        , LoadOnlyFirstImage = 1 << 1
+    };
+
+    LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(ImageLoadFlags)
+
     class Image;
     using ImageSharedPtr = std::shared_ptr<Image>;
     
@@ -32,22 +44,15 @@ namespace IMCodec
 
     LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(CodecCapabilities)
 
-    
+
     struct PluginProperties
     {
+        PluginID id;
         CodecCapabilities capabilities;
         std::wstring pluginDescription;
         ListxtensionCollection extensionCollection;
     };
 
-    enum class ImageResult
-    {
-          Success
-        , FileIsCorrupted
-        , NotImplemented
-        , FormatNotSupported
-        , Fail
-    };
 
     using Parameter = std::variant<int, double, std::wstring>;
     using Parameters = std::map<std::wstring, Parameter>;
@@ -82,37 +87,7 @@ namespace IMCodec
         virtual ImageResult Encode([[maybe_unused]] const ImageSharedPtr& image, [[maybe_unused]] const Parameters& EncodeParametrs
             , [[maybe_unused]] LLUtils::Buffer& encodedBuffer) { return ImageResult::NotImplemented; }
 
-        
         virtual ImageResult GetEncoderParameters([[maybe_unused]] ListParameterDescriptors& out_encodeParameters) { return ImageResult::NotImplemented; }
         virtual const PluginProperties& GetPluginProperties() = 0;
-    };
-
-    enum class ImageLoaderFlags
-    {
-          None                              = 0 << 0
-          //Load only registered extensions
-        , OnlyRegisteredExtension           = 1 << 0
-          //Load registered extensions even if extension name doesn't match the encoding
-        , OnlyRegisteredExtensionRelaxed    = 1 << 1
-    };
-
-    LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(ImageLoaderFlags)
-
-    class IImageCodec
-    {
-    public:
-        virtual ImageResult Decode(const std::byte* buffer
-            , std::size_t size
-            , const char* extensionHint
-            , ImageLoadFlags imageLoadFlags
-            , ImageLoaderFlags imageLoaderFlags
-            , const Parameters& params
-            , ImageSharedPtr& out_image) const = 0;
-
-        virtual ImageResult Encode(const ImageSharedPtr image
-            , const std::wstring& extension
-            , LLUtils::Buffer& encoded
-        ) = 0;
-
     };
 }

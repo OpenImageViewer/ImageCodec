@@ -10,4 +10,4 @@ file(GLOB_RECURSE sourceFiles
 
 add_executable(ImageLoaderExample ${sourceFiles})
 target_include_directories(ImageLoaderExample PRIVATE ./Imageloader/Include)
-target_link_libraries(ImageLoaderExample PRIVATE ImageLoader)
+target_link_libraries(ImageLoaderExample PRIVATE ImageCodec)

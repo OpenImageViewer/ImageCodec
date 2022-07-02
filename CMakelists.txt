@@ -4,8 +4,7 @@ project(ImageCodec)
 #Image Codec
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(./Image/Include)
-include_directories(./Imageloader/Include)
+include_directories(./ImageCodec/Include)
 include_directories(./External/LLUtils/Include)
 
 
@@ -66,7 +65,7 @@ add_subdirectory(./External/tinyxml2)
 option(TINY_EXIF_BUILD_DEMO "build demo binary" OFF)
 add_subdirectory(./External/tinyEXIF)
 
-add_subdirectory(ImageLoader)
+add_subdirectory(ImageCodec)
 
 if (IMCODEC_BUILD_EXAMPLES)
   add_subdirectory(Example)

@@ -6,7 +6,7 @@ file(GLOB_RECURSE sourceFiles
     "./Source/*.cpp"
 )
 
-set(TargetName ImageLoader)
+set(TargetName ImageCodec)
 add_library (${TargetName} ${sourceFiles} )
 
 target_include_directories(${TargetName} PRIVATE ./Include)

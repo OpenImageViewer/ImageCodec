@@ -1,5 +1,6 @@
 #include <ImageLoader.h>
 #include <LLUtils/FileHelper.h>
+#include <ImageCodec.h>
 
 int main()
 {
@@ -7,16 +8,15 @@ int main()
 	using namespace IMCodec;
 	ImageCodec codec;
 	ImageSharedPtr out_image;
+	IMCodec::ImageLoader loader(&codec, nullptr);
 	auto inputFileBuffer = LLUtils::File::ReadAllBytes(L"cat.jpg");
-	if (codec.Decode(inputFileBuffer.data(), inputFileBuffer.size(), {}, ImageLoadFlags::None, ImageLoaderFlags::OnlyRegisteredExtensionRelaxed, {}, out_image)
+	if (codec.Decode(inputFileBuffer.data(), inputFileBuffer.size(), {}, ImageLoadFlags::None, {}, {}, out_image)
 		== ImageResult::Success)
 	{
 		LLUtils::Buffer encodedBuffer;
-		if (codec.Encode(out_image, L"png", encodedBuffer) == ImageResult::Success)
-		{
-			LLUtils::File::WriteAllBytes(L"./output/cat.png", encodedBuffer.size(), encodedBuffer.data());
+		auto pluginID = loader.GetFirstPlugin(L"png");
+		if (loader.Encode(out_image, L"./output/cat.png") == ImageResult::Success)
 			return 0;
-		}
 	}
 	return 1;
 }

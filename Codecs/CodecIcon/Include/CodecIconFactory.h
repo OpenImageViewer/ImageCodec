@@ -1,6 +1,7 @@
 #pragma once
 
 #include <IImagePlugin.h>
+#include <IImageCodec.h>
 
 namespace IMCodec
 {

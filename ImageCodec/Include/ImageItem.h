@@ -3,13 +3,14 @@
 #include "ImageDescriptor.h"
 #include <LLUtils/Buffer.h>
 #include <limits>
+#include "ImageCommon.h"
+
 namespace IMCodec
 {
 	enum class ImageItemType
 	{
 		  Image // Default
 		, Container
-		, ImageMaskPair
 		, Mipmap
 		, Pages
 		, AnimationFrame
@@ -51,20 +52,18 @@ namespace IMCodec
 		ExifData exifData{};
 	};
 
-	struct ItemRuntimeData
+	struct ItemProcessData
 	{
-		double loadTime{};
-		double displayTime{};
-		int64_t numUniqueColors = -1;
-		std::wstring pluginUsed;
+		double processTime{}; // Process time for decode / encode in ms
+		PluginID pluginUsed;
 	};
+
+	using ItemProcessDataSharedPtr = std::shared_ptr<ItemProcessData>;
 
 	struct AnimationData
 	{
 		uint32_t delayMilliseconds{};
 	};
-
-
 
 	struct ImageItem
 	{
@@ -73,16 +72,10 @@ namespace IMCodec
 		/// </summary>
 		ImageDescriptor descriptor{};
 
-
-		/// <summary>
-		/// Image  meta data.
-		/// </summary>
-
-		ItemMetaData metaData{};
 		/// <summary>
 		/// Data added to the item that resolves in runtime.
 		/// </summary>
-		ItemRuntimeData runtimeData{};
+		//ItemRuntimeData runtimeData{};
 
 		/// <summary>
 		/// The raw image data
@@ -97,9 +90,15 @@ namespace IMCodec
 		/// Animation data, applicable only form AnimationData item type.
 		/// </summary>
 		AnimationData animationData{};
+
+		/// <summary>
+		/// codec process information
+		/// </summary>
+		ItemProcessData processData{};
 	};
 
 	using ImageItemSharedPtr = std::shared_ptr<ImageItem>;
+	using ItemMetaDataSharedPtr = std::shared_ptr<ItemMetaData>;
 }
 
 

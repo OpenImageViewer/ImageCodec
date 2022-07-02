@@ -55,7 +55,10 @@ namespace IMCodec
 
         CodecBMP() : mPluginProperties(
             {
-                CodecCapabilities::Decode
+                // {020FDA67-8877-4EAD-8E8E-D15464B7C6C7}
+                { 0x20fda67, 0x8877, 0x4ead, { 0x8e, 0x8e, 0xd1, 0x54, 0x64, 0xb7, 0xc6, 0xc7 } }
+
+                ,CodecCapabilities::Decode
                  ,L"BMP image codec"
                 ,
                 {
@@ -99,7 +102,7 @@ namespace IMCodec
         {
             using namespace std;
 
-            ImageResult result = ImageResult::Fail;
+            ImageResult result = ImageResult::UnknownError;
 
              if (size > sizeof(BitmapFileHeader) + sizeof(BitmapInfoHeader))
             {
