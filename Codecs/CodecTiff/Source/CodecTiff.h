@@ -63,6 +63,14 @@ namespace IMCodec
                 case SAMPLEFORMAT_UINT:
                     switch (samplesPerPixel)
                     {
+                    case 1:
+                        switch (bitsPerSample)
+                        {
+                        case 8:
+                            texelFormat = TexelFormat::I_A8;
+                            break;
+                        }
+                        break;
                     case 3:
                         switch (bitsPerSample)
                         {
@@ -159,17 +167,17 @@ namespace IMCodec
 
             uint32 width, height{};
             uint16 bitsPerSample{};
-            uint16 compression{};
+            //uint16 compression{};
             uint16 photoMetric{};
             uint16 samplesPerPixel{};
             uint16_t orientation{};
             uint32_t rowPitch{};
-            uint32 rowsPerStrip{};
-            uint16_t stripRowCount{};
-            uint32 stripoffsets{};
+            //uint32 rowsPerStrip{};
+            //uint16_t stripRowCount{};
+            //uint32 stripoffsets{};
             uint16_t planarConfig{};
-            uint16_t minSampleValue{};
-            uint16_t maxSampleValue{};
+            /*uint16_t minSampleValue{};
+            uint16_t maxSampleValue{};*/
             uint16_t extraSamples{};
             uint16_t* sampleTypes{};
             //field width specification can be found here: http://www.libtiff.org/man/TIFFGetField.3t.html
@@ -177,28 +185,17 @@ namespace IMCodec
             TIFFGetField(tiff, TIFFTAG_BITSPERSAMPLE, &bitsPerSample);
             TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH, &width);
             TIFFGetField(tiff, TIFFTAG_IMAGELENGTH, &height);
-            TIFFGetField(tiff, TIFFTAG_COMPRESSION, &compression);
+            //TIFFGetField(tiff, TIFFTAG_COMPRESSION, &compression);
             TIFFGetField(tiff, TIFFTAG_PHOTOMETRIC, &photoMetric);
             TIFFGetField(tiff, TIFFTAG_SAMPLESPERPIXEL, &samplesPerPixel);
             TIFFGetFieldDefaulted(tiff, TIFFTAG_ORIENTATION, &orientation);
-            /* Default sample format is unsigned integer.
-               From tiff specification:
-               Section 19: Data Sample Format
-                This section describes a scheme for specifying data sample type information.
-                TIFF implicitly types all data samples as unsigned integer values.Certain applications,
-                however, require the ability to store image - related data in other formats
-                such as floating point.This section presents a scheme for describing a variety of
-                data sample formats.*/
+            TIFFGetFieldDefaulted(tiff, TIFFTAG_SAMPLEFORMAT, &sampleFormat);
 
-            if (TIFFGetField(tiff, TIFFTAG_SAMPLEFORMAT, &sampleFormat) == 0)
-                sampleFormat = SAMPLEFORMAT_UINT;
-
-            TIFFGetField(tiff, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
-            TIFFGetField(tiff, TIFFTAG_STRIPROWCOUNTS, &stripRowCount);
-            TIFFGetField(tiff, TIFFTAG_STRIPOFFSETS, &stripoffsets);
+            //TIFFGetField(tiff, TIFFTAG_ROWSPERSTRIP, &rowsPerStrip);
+            //TIFFGetField(tiff, TIFFTAG_STRIPROWCOUNTS, &stripRowCount);
             TIFFGetField(tiff, TIFFTAG_PLANARCONFIG, &planarConfig);
-            TIFFGetField(tiff, TIFFTAG_MINSAMPLEVALUE, &minSampleValue);
-            TIFFGetField(tiff, TIFFTAG_MAXSAMPLEVALUE, &maxSampleValue);
+            /*TIFFGetField(tiff, TIFFTAG_MINSAMPLEVALUE, &minSampleValue);
+            TIFFGetField(tiff, TIFFTAG_MAXSAMPLEVALUE, &maxSampleValue);*/
             TIFFGetField(tiff, TIFFTAG_EXTRASAMPLES, &extraSamples, &sampleTypes);
 
             const uint32_t bytesPerSample = bitsPerSample / CHAR_BIT;
@@ -208,21 +205,17 @@ namespace IMCodec
             rowPitch = static_cast<uint32_t>(TIFFScanlineSize(tiff));
             auto rasterScanLineSize = TIFFRasterScanlineSize(tiff);
             
+            const auto mainChannelTexelFormat = GetTexelFormat(sampleFormat, bitsPerSample, samplesPerPixel - extraSamples, photoMetric);
 
-            imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample, samplesPerPixel - extraSamples, photoMetric);
             imageItem->descriptor.width = width;
             imageItem->descriptor.height = height;
             imageItem->descriptor.rowPitchInBytes = rowPitch;
 
-            if (imageItem->descriptor.texelFormatStorage != TexelFormat::UNKNOWN)
+            if (mainChannelTexelFormat != TexelFormat::UNKNOWN)
             {
-                imageItem->descriptor.texelFormatDecompressed = imageItem->descriptor.texelFormatStorage;
                 imageItem->data.Allocate(numberOfStripts * stripSize);
 
                 std::byte* currensPos = imageItem->data.data();
-
-                if (stripSize != rowPitch * rowsPerStrip)
-                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported strip size.");
 
                 for (uint32_t i = 0; i < numberOfStripts; i++)
                 {
@@ -230,11 +223,21 @@ namespace IMCodec
                     currensPos += stripSize;
                 }
 
-                auto extraChannelImages = ExtactExtraSamples(width, height, rowPitch, extraSamples + 1, planarConfig
-                    , bytesPerSample, imageItem->descriptor.texelFormatStorage, imageItem->data);
+                //If there's an alpha channel and it's interleaved in the image data, return as single image with alpha channel
+                imageItem->descriptor.texelFormatDecompressed = imageItem->descriptor.texelFormatStorage = mainChannelTexelFormat;
 
-                if (extraChannelImages.empty() == false)
-                    imageItems = extraChannelImages;
+                if (planarConfig == PLANARCONFIG_CONTIG && extraSamples == 1 && sampleTypes[0] > 0)
+                {
+                    imageItem->descriptor.texelFormatStorage = imageItem->descriptor.texelFormatDecompressed = GetTexelFormat(sampleFormat, bitsPerSample, samplesPerPixel, photoMetric);
+                }
+                else
+                {
+                    auto extraChannelImages = ExtactExtraSamples(width, height, rowPitch, samplesPerPixel, extraSamples, planarConfig
+                        , bytesPerSample, imageItem->data, photoMetric, bitsPerSample, sampleFormat);
+
+                    if (extraChannelImages.empty() == false)
+                        imageItems = extraChannelImages;
+                }
             }
             else
             {
@@ -249,70 +252,77 @@ namespace IMCodec
             return imageItems;
         }
         
-        std::vector<ImageItemSharedPtr> ExtactExtraSamples(uint32_t width, uint32_t height, uint32_t sourceRowPitch, uint16_t samplesCount
-            , uint16_t planarConfig, uint16_t bytesPerSample,TexelFormat texelFormat, const LLUtils::Buffer& sourceBUffer)
+        std::vector<ImageItemSharedPtr> ExtactExtraSamples(
+            uint32_t width, uint32_t height, uint32_t sourceRowPitch, 
+            uint16_t samplesPerPixel, uint16_t extraSmaples
+            , uint16_t planarConfig, uint16_t bytesPerSample
+            , const LLUtils::Buffer& sourceBuffer
+            , uint16_t photometric
+            , uint16_t bitsPerSample
+            , uint16_t sampleFormat
+        )
         {
 
             std::vector< ImageItemSharedPtr> subChannels;
 
-            if (samplesCount > 1) // if samples count is 1 then there are no extra samples
+
+            auto extractSamples = [&](uint16_t sampleOffset, uint16_t sampleCount)->
+                ImageItemSharedPtr
             {
-                const auto sigleSampleRowPitch = planarConfig == PLANARCONFIG_CONTIG ? sourceRowPitch / samplesCount : sourceRowPitch;
 
+                const auto sampleSize = sampleCount * bytesPerSample;
 
-                if (planarConfig == PLANARCONFIG_CONTIG)
+                auto imageItem = std::make_shared<ImageItem>();
+                imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample , sampleCount, photometric);
+                imageItem->descriptor.texelFormatDecompressed = imageItem->descriptor.texelFormatStorage;
+                imageItem->descriptor.height = height;
+                imageItem->descriptor.width = width;
+
+                LLUtils::Buffer image;
+
+                if (planarConfig == PLANARCONFIG_CONTIG) //interleaved
                 {
-                    for (uint16_t i = 0; i < samplesCount; i++)
+                    const auto singleSampleRowPitch = sampleSize * width;
+                    image.Allocate(singleSampleRowPitch * height);
+                    size_t sourceOffset = 0;
+                    size_t destOffset = 0;
+                    for (size_t y = 0; y < height; y++)
                     {
-                        LLUtils::Buffer image(sigleSampleRowPitch * height);
-                        size_t sourceOffset = 0;
-                        size_t destOffset = 0;
-                        for (size_t y = 0; y < height; y++)
+                        for (size_t x = 0; x < width; x++)
                         {
-                            for (size_t x = 0; x < width; x++)
-                            {
-                                const size_t sourceRowIndex = i * bytesPerSample + x * samplesCount * bytesPerSample;
-                                const size_t destRowIndex = x * bytesPerSample;
-
-                                memcpy(image.data() + destOffset + destRowIndex, sourceBUffer.data() + sourceOffset + sourceRowIndex, bytesPerSample);
-                            }
-
-                            sourceOffset += sourceRowPitch;
-                            destOffset += sigleSampleRowPitch;
+                            const size_t sourceRowIndex = sampleOffset * sampleSize + x * samplesPerPixel * bytesPerSample;
+                            const size_t destRowIndex = x * sampleSize;
+                            memcpy(image.data() + destOffset + destRowIndex, sourceBuffer.data() + sourceOffset + sourceRowIndex, sampleSize);
                         }
-                        subChannels.push_back(std::make_shared<ImageItem>());
-                        auto imageItem = subChannels.back();
-                        imageItem->data = std::move(image);
-                        imageItem->descriptor.rowPitchInBytes = sigleSampleRowPitch;;
-                        imageItem->descriptor.texelFormatStorage = texelFormat;
-                        imageItem->descriptor.texelFormatDecompressed = texelFormat;
-                        imageItem->descriptor.height = height;
-                        imageItem->descriptor.width = width;
 
-                        
+                        sourceOffset += sourceRowPitch;
+                        destOffset += singleSampleRowPitch;
                     }
+                    imageItem->descriptor.rowPitchInBytes = singleSampleRowPitch;;
                 }
                 else if (planarConfig == PLANARCONFIG_SEPARATE)
                 {
-                    for (uint16_t i = 0; i < samplesCount; i++)
-                    {
-                        LLUtils::Buffer image(sigleSampleRowPitch * height);
-                        memcpy(image.data(), sourceBUffer.data() + height * sigleSampleRowPitch * i, height * sigleSampleRowPitch);
-                        
-                        subChannels.push_back(std::make_shared<ImageItem>());
-                        auto imageItem = subChannels.back();
-                        imageItem->data = std::move(image);
-                        imageItem->descriptor.rowPitchInBytes = sigleSampleRowPitch;;
-                        imageItem->descriptor.texelFormatStorage = texelFormat;
-                        imageItem->descriptor.texelFormatDecompressed = texelFormat;
-                        imageItem->descriptor.height = height;
-                        imageItem->descriptor.width = width;
-                    }
+                    const auto singleSampleRowPitch = sourceRowPitch * sampleCount;
+                    image.Allocate(sourceRowPitch * height);
+                    memcpy(image.data(), sourceBuffer.data() + height * singleSampleRowPitch * sampleOffset, height * singleSampleRowPitch);
+                    imageItem->descriptor.rowPitchInBytes = singleSampleRowPitch;;
                 }
 
+                imageItem->data = std::move(image);
 
+                return imageItem;
+            };
 
+            if (extraSmaples > 0)
+            {
+                const auto mainImageSampleCount = samplesPerPixel - extraSmaples;
+
+                subChannels.push_back(extractSamples(0, mainImageSampleCount));
+
+                for (int i = 0; i < extraSmaples; i++)
+                    subChannels.push_back(extractSamples(mainImageSampleCount + i, 1));
             }
+
 
             return subChannels;
         }
