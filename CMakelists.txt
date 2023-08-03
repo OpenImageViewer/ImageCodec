@@ -53,7 +53,7 @@ if ( ${IMCODEC_BUILD_CODEC_FREEIMAGE})
 	add_definitions(-DIMCODEC_BUILD_CODEC_FREEIMAGE=1)
 endif()
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	add_compile_definitions(NOMINMAX)
 endif()
 
