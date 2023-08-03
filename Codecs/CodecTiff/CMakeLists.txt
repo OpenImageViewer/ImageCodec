@@ -14,4 +14,12 @@ set(LibTiffFolder ../../External/libtiff)
 add_subdirectory(${LibTiffFolder} ./external/libtiff)
 target_include_directories(${TargetName} PRIVATE ${LibTiffFolder}/libtiff)
 target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}./external/libtiff/libtiff)
-target_link_libraries(${TargetName} tiff)
+
+
+
+if(MSVC)
+   #set_property(TARGET tiff PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS true)
+   target_link_libraries(${TargetName} tiff)
+   target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:tiff>.dll")
+endif()
+

@@ -29,3 +29,4 @@ add_subdirectory(${libjpeg-turboFolder} ./external/libjpeg-turbo)
 target_include_directories(${TargetName} PRIVATE ${libjpeg-turboFolder})
 
 target_link_libraries(${TargetName} turbojpeg)
+target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:turbojpeg>.dll")

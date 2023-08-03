@@ -37,3 +37,8 @@ target_include_directories(${TargetName} PRIVATE ${LibPNGFolder})
 target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/libpng)
 target_link_libraries(${TargetName} png_shared )
 target_include_directories(png_shared PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/zlib)
+
+if(MSVC)
+  target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:png_shared>.dll")
+  target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:zlib>.dll")
+endif()
