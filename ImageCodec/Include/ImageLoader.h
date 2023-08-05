@@ -116,7 +116,7 @@ namespace IMCodec
                  && ( (traverseMode & PluginTraverseMode::AnyFileType) == PluginTraverseMode::AnyFileType// 2. Allow non registered extension
                   ||  (isKnownFileType && (traverseMode & PluginTraverseMode::OnlyKnownFileType) == PluginTraverseMode::OnlyKnownFileType));
                  
-             const bool shouldTraveseOnlySuitable = (traverseMode & PluginTraverseMode::SuitablePlugin) == PluginTraverseMode::SuitablePlugin;
+             //const bool shouldTraveseOnlySuitable = (traverseMode & PluginTraverseMode::SuitablePlugin) == PluginTraverseMode::SuitablePlugin;
 
                 // If image not loaded and allow to load using unregistred file extensions, iterate over all image plugins.
                 if (shouldTraversPlugins)

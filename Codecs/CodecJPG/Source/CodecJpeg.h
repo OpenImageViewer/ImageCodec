@@ -132,7 +132,7 @@ namespace IMCodec
             if (pixelFormat != TJPF_UNKNOWN)
             {
                 tjhandle compressHandle = tjInitCompress();
-                const auto maxBufferSize = tjBufSize(image->GetWidth(), image->GetHeight(), 0);
+                //const auto maxBufferSize = tjBufSize(image->GetWidth(), image->GetHeight(), 0);
 
                 unsigned long tjBufferSize = image->GetWidth() * image->GetHeight();
                 auto tjBuffer = tjAlloc(tjBufferSize);

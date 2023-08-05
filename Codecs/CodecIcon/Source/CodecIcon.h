@@ -39,7 +39,6 @@ namespace IMCodec
     {
     private:
             PluginProperties mPluginProperties;
-            IImageCodec* fImageLoader = nullptr;
             static constexpr uint8_t MaskBitCount = 1;
     public:
         inline thread_local static bool sIsLoading = false;
@@ -66,7 +65,7 @@ namespace IMCodec
                 }
                 
             }
-        ), fImageLoader(imageLoader)
+        )
         {
             
         }

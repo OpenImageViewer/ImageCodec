@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 20)
 include_directories(./ImageCodec/Include)
 include_directories(./External/LLUtils/Include)
 
+option(IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS "Disable warnings for external libraries" TRUE)
+
 
 option(IMCODEC_BUILD_CODEC_PSD "Build Codec PSD" TRUE)
 option(IMCODEC_BUILD_CODEC_JPG "Build Codec JPG" TRUE)

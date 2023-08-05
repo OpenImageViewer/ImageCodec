@@ -15,6 +15,14 @@ option(ZLIB_BUILD_BINARIES "Build zlib test sample and example" OFF)
 set(LibPNGFolder ../../External/libpng)
 set(zlibFolder ../../External/zlib)
 
+#Remove -Wdeprecated-non-prototype for zblib
+if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(-Wno-deprecated-non-prototype)
+    endif()
+endif()
+
+
 add_subdirectory(${zlibFolder} ./external/zlib)
 set(ZLIB_INCLUDE_DIRS ${zlibFolder})
 set(ZLIB_LIBRARIES zlib)
@@ -32,6 +40,12 @@ set(SKIP_INSTALL_LIBRARIES TRUE)
 set(SKIP_INSTALL_ALL TRUE)
 
 add_subdirectory(${LibPNGFolder} ./external/libpng)
+
+if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(png_shared PRIVATE -Wno-unused-variable -Wno-return-type -Wno-tautological-constant-out-of-range-compare)
+    endif()
+endif()
 
 target_include_directories(${TargetName} PRIVATE ${LibPNGFolder})
 target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/libpng)

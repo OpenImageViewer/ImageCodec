@@ -206,7 +206,7 @@ namespace IMCodec
             uint32_t numberOfStripts = TIFFNumberOfStrips(tiff);
             tmsize_t stripSize = TIFFStripSize(tiff);
             rowPitch = static_cast<uint32_t>(TIFFScanlineSize(tiff));
-            auto rasterScanLineSize = TIFFRasterScanlineSize(tiff);
+            //auto rasterScanLineSize = TIFFRasterScanlineSize(tiff);
             
             const auto mainChannelTexelFormat = GetTexelFormat(sampleFormat, bitsPerSample, samplesPerPixel - extraSamples, photoMetric);
 

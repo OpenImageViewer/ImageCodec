@@ -67,7 +67,7 @@ namespace IMCodec
 
         int readStatuscallback(png_structp pngstruct, png_uint_32 status)
         {
-
+            return 0;
         }
 
         void pngError(png_const_structrp png_ptr,
@@ -135,7 +135,7 @@ namespace IMCodec
             if (png_image_begin_read_from_memory(&image, buffer, size) != 0)
             {
                 //The size of the image buffer.
-                const auto version = image.version;
+                //const auto version = image.version;
                 const auto sourceImageSize = PNG_IMAGE_SIZE(image);
                 const auto sizeofChannel = static_cast<unsigned int>(PNG_IMAGE_PIXEL_COMPONENT_SIZE(image.format));
                 const auto sourceRowPitchInComponents = PNG_IMAGE_ROW_STRIDE(image);
@@ -206,7 +206,7 @@ namespace IMCodec
 
                         if (png_get_valid(png_ptr, info_ptr, PNG_INFO_fcTL))
                         {
-                            auto res = png_get_next_frame_fcTL(png_ptr, info_ptr, &framewidth, &frameheight, &frameleft, &frametop, &delaynom, &delaydenom, &disposeOp, &blendOp);
+                            [[maybe_unused]] auto res = png_get_next_frame_fcTL(png_ptr, info_ptr, &framewidth, &frameheight, &frameleft, &frametop, &delaynom, &delaydenom, &disposeOp, &blendOp);
 
 
                             LLUtils::Buffer readBuffer(sourceRowPitchInBytes);

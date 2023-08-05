@@ -69,8 +69,6 @@ namespace IMCodec
 
                     auto canvasWidth = animInfo.canvas_width;
                     auto canvasHeight = animInfo.canvas_height;
-                    auto loopCount = animInfo.loop_count;
-                    auto bgColor = animInfo.bgcolor;
 
                     const auto frameSizeInBytes = canvasWidth * canvasHeight * numChannels;
 
