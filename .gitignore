@@ -384,3 +384,4 @@ MigrationBackup/
 #Exteranls
 /CMakeSettings.json
 out/
+/build
