@@ -86,14 +86,15 @@ namespace IMCodec
                 /*if (canvasWidth != 0 && canvasHeight != 0)
                     ComputeDesiredDimensions(canvasWidth, canvasHeight, width, height);*/
 
-
-                size_t imageDataSize = width * height * bytesPerPixel;
+                uint64_t imageDataSize = static_cast<uint64_t>(width) * height * bytesPerPixel;
                 auto imageItem = std::make_shared<ImageItem>();
                 imageItem->itemType = ImageItemType::Image;
-                imageItem->data.Allocate(imageDataSize);
+                imageItem->data.Allocate(static_cast<size_t>(imageDataSize));
 
-            
-                if (tjDecompress2(ftjHandle, const_cast< uint8_t*>(reinterpret_cast<const uint8_t*>( buffer)), jpegSize, reinterpret_cast<unsigned char*>(imageItem->data.data()), width, width * bytesPerPixel, height, TJPF_RGBA, 0) != -1)
+
+                auto resultCode = tjDecompress2(ftjHandle, const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(buffer)), jpegSize, reinterpret_cast<unsigned char*>(imageItem->data.data()), width, width * bytesPerPixel, height, TJPF_RGBA, 0);
+                
+                if (resultCode == 0 || tjGetErrorCode(ftjHandle) == TJERR_WARNING)
                 {
                     imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_R8_G8_B8_A8;
                     imageItem->descriptor.texelFormatStorage = TexelFormat::I_R8_G8_B8;
@@ -103,7 +104,6 @@ namespace IMCodec
                     out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
                     result = ImageResult::Success;
                 }
-
             }
 
             //tjDestroy(ftjHandle);
