@@ -196,7 +196,7 @@ namespace IMCodec
 
 
 
-                    for (auto frameIndex = 0; frameIndex < numFrames; frameIndex++)
+                    for (auto frameIndex = 0u; frameIndex < numFrames; frameIndex++)
                     {
                         auto& currentFrameBuffer = frameBuffers.at(frameIndex);
                         currentFrameBuffer.Allocate(canvasheight * targetRowPitchInBytes);
@@ -211,7 +211,7 @@ namespace IMCodec
 
                             LLUtils::Buffer readBuffer(sourceRowPitchInBytes);
                             png_bytep row_buf = (png_bytep)readBuffer.data();
-                            for (auto y = 0; y < frameheight; y++)
+                            for (auto y = 0u; y < frameheight; y++)
                             {
                                 const size_t rowBytes = framewidth * targetPixelSize;
                                 png_read_rows(png_ptr, (png_bytepp)&row_buf, nullptr, 1);

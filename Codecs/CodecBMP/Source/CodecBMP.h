@@ -78,11 +78,11 @@ namespace IMCodec
             return mPluginProperties;
         }
 
-        uint8_t GetValue(uint8_t bitWidth, const uint8_t* address, int position)
+        uint8_t GetValue(uint8_t bitWidth, const uint8_t* address, size_t position)
         {
             const int mask = (1 << bitWidth) - 1;
             const int PixelsInOneByte = CHAR_BIT / bitWidth;
-            const int byteOffset = position / PixelsInOneByte;
+            const size_t byteOffset = position / PixelsInOneByte;
             const int bitOffset = (CHAR_BIT - ((position % PixelsInOneByte) + 1) * bitWidth);
             const uint8_t currentByte = address[byteOffset];
             uint8_t value = ((currentByte & (mask << bitOffset))) >> bitOffset;
@@ -181,7 +181,7 @@ namespace IMCodec
                     }
 
                     const auto texelSize = IMCodec::GetTexelInfo(imageItem->descriptor.texelFormatDecompressed).texelSize;
-                    imageItem->descriptor.rowPitchInBytes = LLUtils::Utility::Align<size_t>(bmpInfo.biWidth * texelSize / CHAR_BIT, sizeof(uint32_t));
+                    imageItem->descriptor.rowPitchInBytes = LLUtils::Utility::Align<uint32_t>(bmpInfo.biWidth * texelSize / CHAR_BIT, sizeof(uint32_t));
                     const size_t destDataSize = imageItem->descriptor.rowPitchInBytes * imageItem->descriptor.height;
 
                     
@@ -208,7 +208,7 @@ namespace IMCodec
 
                                 for (size_t x = 0; x < imageItem->descriptor.width; x++)
                                 {
-                                    uint8_t pixelIndex = GetValue(bmpInfo.biBitCount, baseSourceAddress + sourceLineOffset, x);
+                                    uint8_t pixelIndex = GetValue(static_cast<uint8_t>(bmpInfo.biBitCount), baseSourceAddress + sourceLineOffset, x);
                                     uint32_t color = 0xFF << 24 | colorTable[pixelIndex];
                                     uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset) + x;
                                     *currentpixel = color;

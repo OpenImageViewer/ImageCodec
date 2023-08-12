@@ -75,12 +75,12 @@ namespace IMCodec
             return mPluginProperties;
         }
 
-        uint8_t GetValue(uint8_t bitWidth, const uint8_t* address, int position)
+        uint8_t GetValue(uint8_t bitWidth, const uint8_t* address, size_t position)
         {
-            const int mask = (1 << bitWidth) - 1;
-            const int PixelsInOneByte = CHAR_BIT / bitWidth;
-            const int byteOffset = position / PixelsInOneByte;
-            const int bitOffset = (CHAR_BIT - ((position % PixelsInOneByte) + 1) * bitWidth);
+            const size_t mask = (1 << bitWidth) - 1;
+            const size_t PixelsInOneByte = CHAR_BIT / bitWidth;
+            const size_t byteOffset = position / PixelsInOneByte;
+            const uint8_t bitOffset = static_cast<uint8_t>((CHAR_BIT - ((position % PixelsInOneByte) + 1) * bitWidth));
             const uint8_t currentByte = address[byteOffset];
             uint8_t value = ((currentByte & (mask << bitOffset))) >> bitOffset;
             return value;
@@ -165,7 +165,7 @@ namespace IMCodec
 
                                     for (size_t x = 0; x < currentDescriptor.width; x++)
                                     {
-                                        uint8_t pixelIndex = GetValue(bitmapInfo->biBitCount, baseSourceAddress + sourceLineOffset, x);
+                                        uint8_t pixelIndex = GetValue(static_cast<uint8_t>(bitmapInfo->biBitCount), baseSourceAddress + sourceLineOffset, x);
                                         uint8_t opacity = GetValue(MaskBitCount, baseSourceAddress + SourceLineMaskOffset, x);
                                         uint32_t color = ((opacity == 1 ? 0x00 : 0xFF) << 24) | colorTable[pixelIndex];
                                         uint32_t* currentpixel = reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(imageItem->data.data()) + destLineOffset) + x;

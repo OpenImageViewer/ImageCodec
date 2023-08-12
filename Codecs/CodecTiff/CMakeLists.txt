@@ -52,6 +52,8 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-reserved-identifier
             -Wno-missing-variable-declarations
             )
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        target_compile_options(tiff PRIVATE /wd4996)
     endif()
     target_compile_definitions(tiff PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()

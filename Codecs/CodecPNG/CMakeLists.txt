@@ -19,6 +19,8 @@ set(zlibFolder ../../External/zlib)
 if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_compile_options(-Wno-deprecated-non-prototype)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        add_compile_options(/wd4244)
     endif()
 endif()
 

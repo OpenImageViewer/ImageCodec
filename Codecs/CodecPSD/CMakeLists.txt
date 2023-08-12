@@ -18,5 +18,7 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
         target_compile_options(libpsd PRIVATE -Wno-switch -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wno-pointer-sign -Wno-deprecated-declarations
         -Wno-pointer-to-int-cast -Wno-unused-variable -Wno-incompatible-function-pointer-types -Wno-int-to-pointer-cast -Wno-sometimes-uninitialized
         -Wno-unused-function -Wno-enum-conversion -Wno-empty-body)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        target_compile_options(libpsd PRIVATE /wd4668 /wd4013 /wd4311 /wd4312 /wd4267 /wd4101 /wd4996)
     endif()
 endif()
