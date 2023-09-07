@@ -31,6 +31,54 @@ namespace IMCodec
         uint32_t      biClrImportant;
     };
 
+    struct BitmapInfoHeaderV2 : BitmapInfoHeader
+    {
+        uint32_t        bV4RedMask;
+        uint32_t        bV4GreenMask;
+        uint32_t        bV4BlueMask;
+    };
+
+    struct BitmapInfoHeaderV3 : BitmapInfoHeaderV2
+    {
+        uint32_t        bV4AlphaMask;
+    };
+
+
+    using FixedPoint2Dot30 = int32_t;
+    
+
+    struct CIEXYZCoords
+    {
+        FixedPoint2Dot30 ciexyzX;
+        FixedPoint2Dot30 ciexyzY;
+        FixedPoint2Dot30 ciexyzZ;
+    };
+
+    struct CIEXYZTriplet
+    {
+        CIEXYZCoords red;
+        CIEXYZCoords green;
+        CIEXYZCoords blue;
+    };
+
+
+    struct BitmapInfoHeaderV4 : BitmapInfoHeaderV3
+    {
+        uint32_t        bV4CSType;
+        CIEXYZTriplet   bV4Endpoints;
+        uint32_t        bV4GammaRed;
+        uint32_t        bV4GammaGreen;
+        uint32_t        bV4GammaBlue;
+    };
+
+    struct BitmapInfoHeaderV5 : BitmapInfoHeaderV4
+    {
+        uint32_t        bV5Intent;
+        uint32_t        bV5ProfileData;
+        uint32_t        bV5ProfileSize;
+        uint32_t        bV5Reserved;
+    };
+
     enum class BitmapCompression
     {
         RGB = 0x0000,
@@ -49,7 +97,7 @@ namespace IMCodec
     class CodecBMP : public IImagePlugin
     {
     private:
-            PluginProperties mPluginProperties;
+        PluginProperties mPluginProperties;
     public:
         inline thread_local static bool sIsLoading = false;
 
@@ -70,9 +118,9 @@ namespace IMCodec
             }
         )
         {
-            
+
         }
-        
+
         const PluginProperties& GetPluginProperties() override
         {
             return mPluginProperties;
@@ -97,6 +145,25 @@ namespace IMCodec
             return sizeRemaininBuffer >= requiredSize;
         }
 
+        size_t ResolveBmpVersion(const BitmapInfoHeader* info)
+        {
+            switch (info->biSize)
+            {
+                case sizeof(BitmapInfoHeader) :
+                    return 1;
+                case sizeof(BitmapInfoHeaderV2) :
+                    return 2;
+                case sizeof(BitmapInfoHeaderV3) :
+                    return 3;
+                case sizeof(BitmapInfoHeaderV4) :
+                    return 4;
+                case sizeof(BitmapInfoHeaderV5) :
+                    return 5;
+                default:
+                    LL_EXCEPTION(LLUtils::Exception::ErrorCode::InvalidState, "Bitmap version not found");
+            }
+        }
+
         //Base abstract methods
         ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
@@ -111,14 +178,11 @@ namespace IMCodec
                 {
                     const BitmapInfoHeader* bmpInfoPtr = reinterpret_cast<const BitmapInfoHeader*>(buffer + sizeof(BitmapFileHeader));
                     const BitmapInfoHeader& bmpInfo = *bmpInfoPtr;
-                    const uint8_t* baseSourceAddress = reinterpret_cast<const uint8_t*>(bmpInfoPtr + 1);
+
+                    const size_t bitmapVersion = ResolveBmpVersion(bmpInfoPtr);
+
+                    const uint8_t* baseSourceAddress = reinterpret_cast<const uint8_t*>(bmpInfoPtr) + bmpInfo.biSize;
                     BitmapCompression compression = static_cast<BitmapCompression>(bmpInfo.biCompression);
-                    if (compression == BitmapCompression::BitFields)
-                    {
-                        //TODO: implement RGBMasks for 16 bit and 32 bit images.
-                        [[maybe_unused]] const uint32_t* RGBMasks = reinterpret_cast<const uint32_t*>(baseSourceAddress);
-                        baseSourceAddress += sizeof(uint32_t) * 4;
-                    }
 
                     switch (compression)
                     {
@@ -126,7 +190,18 @@ namespace IMCodec
                         // no compression.
                         break;
                     case BitmapCompression::BitFields:
-                        //No compression but add add masks to color data.
+                        if (bitmapVersion == 2)
+                        {
+                            //RGB mask
+                            //TODO: implement BitFields compression
+                            //const BitmapInfoHeaderV2* headerV2 = reinterpret_cast<const BitmapInfoHeaderV2*>(bmpInfoPtr);
+                        }
+                        else  if (bitmapVersion > 2)
+                        {
+                            //RGB mask
+                            //TODO: implement BitFields compression
+                            //const BitmapInfoHeaderV3* headerV3 = reinterpret_cast<const BitmapInfoHeaderV3*>(bmpInfoPtr);
+                        }
                         break;
                     default:
                         LL_EXCEPTION_NOT_IMPLEMENT("Bitmap compression type is not supported");
