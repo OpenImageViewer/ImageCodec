@@ -47,8 +47,8 @@ namespace IMCodec
 
     struct PluginProperties
     {
-        PluginID id;
-        CodecCapabilities capabilities;
+        PluginID id{};
+        CodecCapabilities capabilities{};
         std::wstring pluginDescription;
         ListxtensionCollection extensionCollection;
     };

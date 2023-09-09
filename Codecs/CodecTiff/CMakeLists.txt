@@ -43,6 +43,7 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-unused-variable
             -Wno-reserved-macro-identifier
             -Wno-unused-parameter
+            -Wno-unsafe-buffer-usage
             )
 
             target_compile_options(port PRIVATE 
@@ -51,6 +52,7 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-reserved-macro-identifier
             -Wno-reserved-identifier
             -Wno-missing-variable-declarations
+            -Wno-unsafe-buffer-usage
             )
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         target_compile_options(tiff PRIVATE /wd4996)

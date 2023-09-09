@@ -57,7 +57,7 @@ namespace IMCodec
         struct FrameData
         {
             GraphicsControlBlock gcb{ 0, false , 0 , -1 };
-            GifImageDesc imagedesc;
+            GifImageDesc imagedesc{};
         };
 
         
