@@ -50,7 +50,12 @@ namespace IMCodec
 	class Image : public ImageDesc
 	{
 	public:
-        Image(ImageItemSharedPtr imageItem, ImageItemType subImageType) : ImageDesc(&imageItem->descriptor), fSubItemsGroupType(subImageType), fImageItem(imageItem)  {}
+        Image(ImageItemSharedPtr imageItem, ImageItemType subImageType) : ImageDesc(&imageItem->descriptor), fSubItemsGroupType(subImageType), fImageItem(imageItem)  
+        {
+            // If storage texel format is not set, assume it's identical to the decompressed texel format.
+            if (imageItem->descriptor.texelFormatStorage == TexelFormat::UNKNOWN)
+                imageItem->descriptor.texelFormatStorage = imageItem->descriptor.texelFormatDecompressed;
+        }
         const std::byte* GetBufferAt(int32_t x, int32_t y) const { return fImageItem->data.data()+ (y * GetRowPitchInBytes() + x * GetBitsPerTexel() / ImageDesc::NumBitsInOneByte); }
         const std::byte* GetBuffer() const { return fImageItem->data.data(); }
         uint32_t GetNumSubImages() const { return static_cast<uint32_t>(fSubImages.size()); }
