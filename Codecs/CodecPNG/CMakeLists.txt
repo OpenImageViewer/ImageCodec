@@ -14,6 +14,7 @@ add_library (${TargetName} ${sourceFiles} )
 option(ZLIB_BUILD_BINARIES "Build zlib test sample and example" OFF)
 set(LibPNGFolder ../../External/libpng)
 set(zlibFolder ../../External/zlib)
+cmake_path(ABSOLUTE_PATH zlibFolder NORMALIZE OUTPUT_VARIABLE zlibFolder)
 
 #Remove -Wdeprecated-non-prototype for zblib
 if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)

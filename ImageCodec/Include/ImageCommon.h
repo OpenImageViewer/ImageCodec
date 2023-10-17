@@ -1,7 +1,10 @@
 #pragma once
+#include <LLUtils/StringDefs.h>
 
 namespace IMCodec
 {
+    using string_type = LLUtils::native_string_type;
+    using char_type = LLUtils::native_char_type;
     enum class ImageResult
     {
           Success

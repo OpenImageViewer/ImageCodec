@@ -24,11 +24,11 @@ namespace IMCodec
     class Image;
     using ImageSharedPtr = std::shared_ptr<Image>;
     
-    using ListFileExtensions = std::vector<std::wstring>;
+    using ListFileExtensions = std::vector<string_type>;
 
     struct ExtensionCollection
     {
-        std::wstring description;
+        string_type description;
         ListFileExtensions listExtensions;
     };
     
@@ -49,23 +49,23 @@ namespace IMCodec
     {
         PluginID id{};
         CodecCapabilities capabilities{};
-        std::wstring pluginDescription;
+        string_type pluginDescription;
         ListxtensionCollection extensionCollection;
     };
 
 
-    using Parameter = std::variant<int, double, std::wstring>;
-    using Parameters = std::map<std::wstring, Parameter>;
+    using Parameter = std::variant<int, double, string_type>;
+    using Parameters = std::map<string_type, Parameter>;
 
     struct ParameterDescriptor
     {
-        std::wstring name;
-        std::wstring type;
-        std::wstring displayName;
-        std::wstring description;
-        std::wstring defaultValue;
-        std::wstring min;
-        std::wstring max;
+        string_type name;
+        string_type type;
+        string_type displayName;
+        string_type description;
+        string_type defaultValue;
+        string_type min;
+        string_type max;
     };
 
     using ListParameterDescriptors = std::vector<ParameterDescriptor>;

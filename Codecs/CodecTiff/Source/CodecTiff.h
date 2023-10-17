@@ -22,12 +22,12 @@ namespace IMCodec
                 // {3AF4C3A1-FA72-4394-8B7C-68412A3433E3}
                 { 0x3af4c3a1, 0xfa72, 0x4394, { 0x8b, 0x7c, 0x68, 0x41, 0x2a, 0x34, 0x33, 0xe3 } }
                 , CodecCapabilities::Decode
-                , L"LibTiff image codec"
+                , LLUTILS_TEXT("LibTiff image codec")
                 ,
                 {
                     {
-                        { L"Tag Image File Format"}
-                        ,{ L"tif",L"tiff"}
+                        { LLUTILS_TEXT("Tag Image File Format")}
+                        ,{ LLUTILS_TEXT("tif"),LLUTILS_TEXT("tiff")}
                     }
                 }
 

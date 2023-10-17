@@ -33,6 +33,22 @@ namespace IMCodec
         IcoDirEntry entry[1];
     };
 
+    struct BitmapInfoHeader
+    {
+        uint32_t      biSize;
+        int32_t       biWidth;
+        int32_t       biHeight;
+        uint16_t      biPlanes;
+        uint16_t      biBitCount;
+        uint32_t      biCompression;
+        uint32_t      biSizeImage;
+        int32_t       biXPelsPerMeter;
+        int32_t       biYPelsPerMeter;
+        uint32_t      biClrUsed;
+        uint32_t      biClrImportant;
+    };
+
+
 #pragma pack(pop)
 
     class CodecIcon : public IImagePlugin
@@ -50,17 +66,17 @@ namespace IMCodec
                 { 0x1599fc40, 0x58df, 0x4950, { 0xa4, 0x9b, 0x28, 0x80, 0xe7, 0x28, 0xce, 0x0 } }
 
                  ,CodecCapabilities::Decode
-                , L"Icon/Cursor Codec"
+                , LLUTILS_TEXT("Icon/Cursor Codec")
                 ,
                 {
                     {
-                        { L"Windows Icon File"}
-                            ,{ L"ico",L"icon"}
+                        { LLUTILS_TEXT("Windows Icon File")}
+                            ,{ LLUTILS_TEXT("ico"),LLUTILS_TEXT("icon")}
                     }
                     ,
                     {
-                        { L"Windows Cursor File"}
-                            ,{ L"cur"}
+                        {LLUTILS_TEXT("Windows Cursor File")}
+                            ,{ LLUTILS_TEXT("cur")}
                     }
                 }
                 
@@ -121,8 +137,7 @@ namespace IMCodec
                  
                         auto& currentDescriptor = imageItem->descriptor;
                         const IcoDirEntry* currentEntry = (&icoFile->entry)[i];
-                        
-                        const BITMAPINFOHEADER* bitmapInfo = reinterpret_cast<const BITMAPINFOHEADER*>(baseAddress + currentEntry->offsetData);
+                        const BitmapInfoHeader* bitmapInfo = reinterpret_cast<const BitmapInfoHeader*>(baseAddress + currentEntry->offsetData);
                         if (bitmapInfo->biSize == 40)
                         {
                             if (bitmapInfo->biCompression != 0)
@@ -234,7 +249,7 @@ namespace IMCodec
                             sIsLoading = true;
                             static thread_local ImageLoader helper;
                             ImageResult pngRes = helper.Decode(reinterpret_cast<const std::byte*>(baseAddress + currentEntry->offsetData), currentEntry->imageDataSize
-                                , ImageLoadFlags::None, {}, L"png", PluginTraverseMode::AnyPlugin, pngImage);
+                                , ImageLoadFlags::None, {}, LLUTILS_TEXT("png"), PluginTraverseMode::AnyPlugin, pngImage);
 
                             if (pngRes == ImageResult::Success)
                             {

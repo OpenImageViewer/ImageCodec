@@ -15,12 +15,12 @@ namespace IMCodec
                 // {7798CB6A-5546-4EAD-BA95-A114C8520D0D}
                 { 0x7798cb6a, 0x5546, 0x4ead, { 0xba, 0x95, 0xa1, 0x14, 0xc8, 0x52, 0xd, 0xd } }
                 , CodecCapabilities::Encode | CodecCapabilities::Decode 
-                ,L"TurboJpeg" 
+                ,LLUTILS_TEXT("TurboJpeg") 
                 ,
                 {
                     {
-                        { L"Joint Photographic Experts Group"}
-                            ,{ L"jpg",L"jpeg"}
+                        { LLUTILS_TEXT("Joint Photographic Experts Group")}
+                            ,{ LLUTILS_TEXT("jpg"),LLUTILS_TEXT("jpeg")}
                     }
                 }
             };
@@ -158,8 +158,9 @@ namespace IMCodec
         }
 
         ImageResult GetEncoderParameters(ListParameterDescriptors& out_encodeParameters) override 
-        { 
-            out_encodeParameters = { {L"quality",L"double",L"Jpeg compression quality",L"Higher value means better quality",L"80",L"0",L"100"} };
+        {
+            out_encodeParameters = { {LLUTILS_TEXT("quality"),LLUTILS_TEXT("double"),LLUTILS_TEXT("Jpeg compression quality")
+            ,LLUTILS_TEXT("Higher value means better quality"),LLUTILS_TEXT("80"),LLUTILS_TEXT("0"),LLUTILS_TEXT("100")} };
             return ImageResult::Success;
         }
     };

@@ -53,12 +53,12 @@ namespace IMCodec
                 { 0x22a82f61, 0x4c92, 0x432e, { 0x93, 0xeb, 0x63, 0x5e, 0x24, 0x54, 0x53, 0x6 } }
 
                 , CodecCapabilities::Decode | CodecCapabilities::Encode
-                , L"PNG Codec"
+                , LLUTILS_TEXT("PNG Codec")
                 ,
                 {
                     {
-                        { L"Portable Network Graphics"}
-                       ,{ L"png"}
+                        { LLUTILS_TEXT("Portable Network Graphics")}
+                       ,{ LLUTILS_TEXT("png")}
                     }
                 }
             };

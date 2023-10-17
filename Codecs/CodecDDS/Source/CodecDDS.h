@@ -20,12 +20,12 @@ namespace IMCodec
                 // {252347B1-91E7-4C5C-8F06-726B0A52DE6D}
                 { 0x252347b1, 0x91e7, 0x4c5c, { 0x8f, 0x6, 0x72, 0x6b, 0xa, 0x52, 0xde, 0x6d } }
                 ,CodecCapabilities::Decode
-                ,L"NV_DDS image codec"
+                ,LLUTILS_TEXT("NV_DDS image codec")
                 ,
                 {
                     {
-                        { L"DDS - DirectDraw Surface Image"}
-                            ,{ L"dds"}
+                        { LLUTILS_TEXT("DDS - DirectDraw Surface Image")}
+                            ,{ LLUTILS_TEXT("dds")}
                     }
                 }
             }

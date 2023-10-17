@@ -13,7 +13,9 @@ add_library (${TargetName} ${sourceFiles} )
 set(libjpeg-turboFolder ../../External/libjpeg-turbo)
 #Enable ASM provided by NASM
 
-set(CMAKE_ASM_NASM_COMPILER ${CMAKE_CURRENT_SOURCE_DIR}/../../External/bintools/nasm-2.15.05/nasm.exe)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(CMAKE_ASM_NASM_COMPILER ${CMAKE_CURRENT_SOURCE_DIR}/../../External/bintools/nasm-2.15.05/nasm.exe)
+endif()
 #set(ENV{ASM_NASM} ${CMAKE_CURRENT_SOURCE_DIR}/../../External/bintools/nasm-2.15.05/nasm.exe)
 
 #set(CMAKE_ASM_COMPILE_OBJECT "-I<CMAKE_CURRENT_SOURCE_DIR>/../../External/libjpeg-turbo/simd/nasm 
@@ -30,4 +32,7 @@ add_subdirectory(${libjpeg-turboFolder} ./external/libjpeg-turbo)
 target_include_directories(${TargetName} PRIVATE ${libjpeg-turboFolder})
 
 target_link_libraries(${TargetName} turbojpeg)
-target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:turbojpeg>.dll")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:turbojpeg>.dll")
+else()
+endif()

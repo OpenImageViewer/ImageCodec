@@ -54,6 +54,8 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-missing-variable-declarations
             -Wno-unsafe-buffer-usage
             )
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        target_compile_options(tiff PRIVATE -Wno-array-parameter -Wno-misleading-indentation)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
         target_compile_options(tiff PRIVATE /wd4996)
     endif()
@@ -61,15 +63,12 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
 endif()
 
 
-
-
 target_include_directories(${TargetName} PRIVATE ${LibTiffFolder}/libtiff)
-target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}./external/libtiff/libtiff)
+target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/libtiff/libtiff)
 
 
-
+target_link_libraries(${TargetName} tiff)
 if(MSVC)
    #set_property(TARGET tiff PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS true)
-   target_link_libraries(${TargetName} tiff)
    target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:tiff>.dll")
 endif()

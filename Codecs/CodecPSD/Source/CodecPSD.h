@@ -15,12 +15,12 @@ namespace IMCodec
                 // {D5DD791B-D177-4584-A076-226CC79D4CF9}
                  { 0xd5dd791b, 0xd177, 0x4584, { 0xa0, 0x76, 0x22, 0x6c, 0xc7, 0x9d, 0x4c, 0xf9 } }
                 ,CodecCapabilities::Decode
-                ,L"PSDLib Codec"
+                ,LLUTILS_TEXT("PSDLib Codec")
                 ,
                 {
                     {
-                        { L"Photosop document"}
-                            ,{ L"psd"}
+                        { LLUTILS_TEXT("Photosop document")}
+                            ,{ LLUTILS_TEXT("psd")}
                     }
                 }
             };

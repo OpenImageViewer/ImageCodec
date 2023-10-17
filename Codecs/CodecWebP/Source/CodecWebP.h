@@ -20,12 +20,12 @@ namespace IMCodec
                 // {3DEF6662-48D7-4D61-9D96-C15FEDA9E4F4}
                 { 0x3def6662, 0x48d7, 0x4d61, { 0x9d, 0x96, 0xc1, 0x5f, 0xed, 0xa9, 0xe4, 0xf4 } }
                 , CodecCapabilities::Decode
-                 , L"WebP Codec"
+                 , LLUTILS_TEXT("WebP Codec")
                 ,
                 {
                     {
-                        { L"WebP image file"}
-                            ,{ L"webp"}
+                        { LLUTILS_TEXT("WebP image file")}
+                            ,{LLUTILS_TEXT("webp")}
                     }
                 }
 

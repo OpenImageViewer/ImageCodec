@@ -28,7 +28,7 @@ namespace IMCodec
 
     struct ChannelInfo
     {
-        ChannelDataType ChannelDataType;
+        ChannelDataType channelDataType;
         ChannelSemantic semantic;
         ChannelWidth width;
     };

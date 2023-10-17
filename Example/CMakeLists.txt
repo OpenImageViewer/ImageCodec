@@ -14,7 +14,11 @@ add_executable(${TargetName} ${sourceFiles})
 
 
 target_include_directories(${TargetName} PRIVATE ./Imageloader/Include)
-target_link_libraries(${TargetName} PRIVATE ImageCodec delayimp)
+target_link_libraries(${TargetName} PRIVATE ImageCodec)
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    target_link_libraries(${TargetName} PRIVATE delayimp)
+endif()
 
 
 #Copy oiv library resources to the output dir 

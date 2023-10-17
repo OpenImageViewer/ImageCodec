@@ -38,12 +38,12 @@ namespace IMCodec
             // {1D076943-F907-426A-8DC6-838B8CCE320C}
              { 0x1d076943, 0xf907, 0x426a, { 0x8d, 0xc6, 0x83, 0x8b, 0x8c, 0xce, 0x32, 0xc } }
             ,CodecCapabilities::Decode
-            , L"Gif Codec"
+            , LLUTILS_TEXT("Gif Codec")
                 ,
                 {
                     {
-                        { L"Graphics Interchange Format"}
-                       ,{ L"gif"}
+                        { LLUTILS_TEXT("Grapics Interchange Format")}
+                       ,{ LLUTILS_TEXT("gif")}
                     }
                 }
         };

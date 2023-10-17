@@ -23,6 +23,10 @@ option(IMCODEC_BUILD_CODEC_FREEIMAGE "Build Codec FREEIMAGE" FALSE)
 
 option(IMCODEC_BUILD_EXAMPLES "Build Examples" TRUE)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+endif()
+
 
 if ( ${IMCODEC_BUILD_CODEC_PSD})
 	add_definitions(-DIMCODEC_BUILD_CODEC_PSD=1)
@@ -65,10 +69,10 @@ option(tinyxml2_BUILD_TESTING "Build tests for tinyxml2" OFF)
 add_subdirectory(./External/tinyxml2)
 
 option(TINY_EXIF_BUILD_DEMO "build demo binary" OFF)
-add_subdirectory(./External/tinyEXIF)
+add_subdirectory(./External/TinyEXIF)
 
 add_subdirectory(ImageCodec)
 
-if (IMCODEC_BUILD_EXAMPLES)
+if (IMCODEC_BUILD_EXAMPLES AND IMCODEC_BUILD_CODEC_JPG AND IMCODEC_BUILD_CODEC_PNG)
   add_subdirectory(Example)
 endif()

@@ -41,7 +41,7 @@ namespace IMCodec
         ImageMetaDataLoader fImageMetaDataLoader;
         using ListPluginID = std::vector<PluginID>;
         ListPluginID fListPlugins;
-        using MapStringListPlugin = std::map<std::wstring, ListPluginID>;
+        using MapStringListPlugin = std::map<string_type, ListPluginID>;
         MapStringListPlugin fMapPlugins;
         
         
@@ -72,7 +72,7 @@ namespace IMCodec
 
         }
      
-        PluginID GetFirstPlugin(const std::wstring& extension) const
+        PluginID GetFirstPlugin(const string_type& extension) const
         {
             using namespace std;
             PluginID result{};
@@ -96,7 +96,7 @@ namespace IMCodec
             , std::size_t size
             , ImageLoadFlags imageLoadFlags
             , const Parameters& params
-            , const std::wstring& extension
+            , const string_type& extension
             , PluginTraverseMode traverseMode
             , ImageSharedPtr& out_image)
         {
@@ -105,7 +105,7 @@ namespace IMCodec
 
 
              if (extension.empty() == false)
-                  choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower<std::wstring>(extension));
+                  choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower<string_type>(extension));
 
              if (choosenPlugin != PluginID())
                     result = fImageCodec.Decode(buffer, size, choosenPlugin, imageLoadFlags, params, out_image);
@@ -137,7 +137,7 @@ namespace IMCodec
         }
 
 
-        ImageResult Decode(const std::wstring& filePath 
+        ImageResult Decode(const string_type& filePath 
             , ImageLoadFlags imageLoadFlags
             , const Parameters& params
             , PluginTraverseMode traverseMode
@@ -148,7 +148,7 @@ namespace IMCodec
                     FileMapping fileMapping(filePath);
                     const void* buffer = fileMapping.GetBuffer();
                     std::size_t size = fileMapping.GetSize();
-                    std::wstring extension = StringUtility::ConvertString<std::wstring>(StringUtility::GetFileExtension<std::wstring>(filePath));
+                    string_type extension = StringUtility::GetFileExtension<string_type>(filePath);
             
                     ImageResult result = ImageResult::UnknownError;
                     if (buffer != nullptr && size != 0)
@@ -164,7 +164,7 @@ namespace IMCodec
         }
 
 
-     ImageResult Encode(const ImageSharedPtr image, const std::wstring& extension, LLUtils::Buffer& encoded)
+     ImageResult Encode(const ImageSharedPtr image, const string_type& extension, LLUtils::Buffer& encoded)
     {
         auto choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower(extension));
 
@@ -180,10 +180,10 @@ namespace IMCodec
     }
 
 
-     ImageResult Encode(const ImageSharedPtr image, const std::wstring& filePath)
+     ImageResult Encode(const ImageSharedPtr image, const string_type& filePath)
      {
-         std::wstring extension = LLUtils::StringUtility::ToLower(std::filesystem::path(filePath).extension().wstring());
-         std::wstring_view sv(extension);
+         string_type extension = LLUtils::StringUtility::ToLower(std::filesystem::path(filePath).extension().string<char_type>());
+         std::basic_string_view<char_type> sv(extension);
 
          if (sv.empty() == false)
              sv = sv.substr(1);
@@ -200,7 +200,7 @@ namespace IMCodec
      {
           return fImageMetaDataLoader.LoadMetaData(buffer, size, out_metaData);
      }
-     ImageResult LoadMetaData(std::wstring filePath, ItemMetaDataSharedPtr& out_metaData)
+     ImageResult LoadMetaData(LLUtils::native_string_type filePath, ItemMetaDataSharedPtr& out_metaData)
      {
          using namespace LLUtils;
          FileMapping fileMapping(filePath);

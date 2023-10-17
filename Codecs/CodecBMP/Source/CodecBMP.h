@@ -107,12 +107,12 @@ namespace IMCodec
                 { 0x20fda67, 0x8877, 0x4ead, { 0x8e, 0x8e, 0xd1, 0x54, 0x64, 0xb7, 0xc6, 0xc7 } }
 
                 ,CodecCapabilities::Decode
-                 ,L"BMP image codec"
+                 ,LLUTILS_TEXT("BMP image codec")
                 ,
                 {
                     {
-                        { L"Bitmap image file"}
-                        ,{ L"bmp"}
+                        { LLUTILS_TEXT("Bitmap image file")}
+                        ,{ LLUTILS_TEXT("bmp")}
                     }
                 }
             }
