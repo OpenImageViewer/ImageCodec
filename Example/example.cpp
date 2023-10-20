@@ -28,6 +28,7 @@ int main()
 	}
 
 	std::cout << "\nPress any key to continue...";
+	std::cout.flush();
 	getchar();
 
 	return resultCode;
