@@ -27,15 +27,16 @@ endif()
 
 
 add_subdirectory(${zlibFolder} ./external/zlib)
-set(ZLIB_INCLUDE_DIRS ${zlibFolder})
+
+list(APPEND ZLIB_INCLUDE_DIRS "${zlibFolder}")
+list(APPEND ZLIB_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/external/zlib")
 set(ZLIB_LIBRARIES zlib)
 
 #LibPNG
 option(PNG_SHARED       "Build shared lib" ON)
 option(PNG_STATIC       "Build static lib" OFF)
 option(PNG_TESTS        "Build libpng tests" OFF)
-option(PNG_FIX          "Build pngfix" OFF)
-option(PNG_FIX_ITXT     "Build pngfix itext" OFF)
+option(PNG_EXECUTABLES  "Build libpng executables" OFF)
 option(PNG_BUILD_ZLIB   "Custom zlib Location, else find_package is used" ON)
 
 
