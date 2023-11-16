@@ -31,3 +31,6 @@
 [submodule "External/TinyEXIF"]
 	path = External/TinyEXIF
 	url = https://github.com/OpenImageViewer/TinyEXIF.git
+[submodule "External/ExoticNumbers"]
+	path = External/ExoticNumbers
+	url = https://github.com/OpenImageViewer/ExoticNumbers.git

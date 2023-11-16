@@ -10,6 +10,7 @@ include_directories(./External/LLUtils/Include)
 option(IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS "Disable warnings for external libraries" TRUE)
 
 
+option(IMCODEC_BUILD_IMAGE_UTIL "Build Image util" TRUE)
 option(IMCODEC_BUILD_CODEC_PSD "Build Codec PSD" TRUE)
 option(IMCODEC_BUILD_CODEC_JPG "Build Codec JPG" TRUE)
 option(IMCODEC_BUILD_CODEC_PNG "Build Codec PNG" TRUE)
@@ -72,6 +73,11 @@ option(TINY_EXIF_BUILD_DEMO "build demo binary" OFF)
 add_subdirectory(./External/TinyEXIF)
 
 add_subdirectory(ImageCodec)
+
+if (IMCODEC_BUILD_IMAGE_UTIL)
+	add_subdirectory(ImageUtil)
+endif()
+
 
 if (IMCODEC_BUILD_EXAMPLES AND IMCODEC_BUILD_CODEC_JPG AND IMCODEC_BUILD_CODEC_PNG)
   add_subdirectory(Example)
