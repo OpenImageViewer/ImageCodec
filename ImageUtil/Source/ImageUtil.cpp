@@ -1,5 +1,5 @@
 #include <ImageUtil/ImageUtil.h> 
-#include <ImageUtil\TexelConvertor.h>
+#include <ImageUtil/TexelConvertor.h>
 #include <ExoticNumbers/Float24.h>
 #include <ExoticNumbers/half.hpp>
 

@@ -324,7 +324,7 @@ namespace IMUtil
                 std::span sourceData(reinterpret_cast<const SourceSampleType*>(sampleData), totalPixels);
                 std::span bgraData(reinterpret_cast<PixelUtil::BitTexel32Ex*>(imageItem->data.data()), totalPixels);
                 //Find minMax is a single pass since image data is consecutive 
-                auto minMax = std::minmax_element(std::execution::parallel_unsequenced_policy(), std::begin(sourceData), std::end(sourceData));
+                auto minMax = std::minmax_element(std::execution::par_unseq, std::begin(sourceData), std::end(sourceData));
                 NormalizeAnyToRGBA(std::begin(bgraData), std::end(bgraData), std::begin(sourceData), std::end(sourceData), normalizeMode, std::make_pair(*minMax.first, *minMax.second) );
             }
             else

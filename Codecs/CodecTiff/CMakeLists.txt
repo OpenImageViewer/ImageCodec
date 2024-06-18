@@ -68,7 +68,6 @@ target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/ext
 
 
 target_link_libraries(${TargetName} tiff)
-if(MSVC)
-   #set_property(TARGET tiff PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS true)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT MINGW)
    target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:tiff>.dll")
 endif()

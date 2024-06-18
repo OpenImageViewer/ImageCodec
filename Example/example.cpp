@@ -21,9 +21,14 @@ int main()
 			
 			std::cout << "\ncat.png has been encoded in: " << std::setprecision(2) << std::fixed<< encodeTime.GetElapsedTimeReal(LLUtils::StopWatch::Milliseconds) << " ms";
 		}
+		else
+		{
+			std::cout << "\nError, cannot encode image";
+		}
 	}
 	else
 	{
+		std::cout << "\nError, cannot decode image";
 		resultCode = 1;
 	}
 
