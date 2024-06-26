@@ -13,7 +13,7 @@ add_library (${TargetName} ${sourceFiles} )
 set(libjpeg-turboFolder ../../External/libjpeg-turbo)
 #Enable ASM provided by NASM
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND NOT ${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
     set(CMAKE_ASM_NASM_COMPILER ${CMAKE_CURRENT_SOURCE_DIR}/../../External/bintools/nasm-2.15.05/nasm.exe)
 endif()
 #set(ENV{ASM_NASM} ${CMAKE_CURRENT_SOURCE_DIR}/../../External/bintools/nasm-2.15.05/nasm.exe)

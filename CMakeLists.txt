@@ -4,6 +4,17 @@ project(ImageCodec)
 #Image Codec
 set(CMAKE_CXX_STANDARD 20)
 
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND ${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
+	message("Cross compiling: Host: linux, Target: Windows")
+	set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
+	set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+	set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+	set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM BOTH)
+	set(CMAKE_SYSTEM_PROCESSOR x86_64)
+	set(CMAKE_SYSTEM_VERSION 10)
+endif()
+
+
 include_directories(./ImageCodec/Include)
 include_directories(./External/LLUtils/Include)
 
