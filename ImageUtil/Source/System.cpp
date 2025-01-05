@@ -15,7 +15,8 @@ namespace IMUtil
 			}
 			else
 			{
-				LL_EXCEPTION_NOT_IMPLEMENT("Unknown CPU cores layout");
+				//TODO: find a better way to decide the ideal number of cores to use
+				return static_cast<uint32_t>(cpuCoresInfo.physicalCores);
 			}
 		}
 		else
