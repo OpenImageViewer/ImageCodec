@@ -44,6 +44,7 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-reserved-macro-identifier
             -Wno-unused-parameter
             -Wno-unsafe-buffer-usage
+            -Wno-switch-default
             )
 
             target_compile_options(port PRIVATE 
