@@ -11,7 +11,9 @@ set(TargetName CodecPNG)
 add_library (${TargetName} ${sourceFiles} )
 
 #ZLIB
-option(ZLIB_BUILD_BINARIES "Build zlib test sample and example" OFF)
+option(ZLIB_BUILD_TESTING "Enable Zlib Examples as tests" OFF)
+option(ZLIB_BUILD_MINIZIP "Enable building libminizip contrib library" OFF)
+
 set(LibPNGFolder ../../External/libpng)
 set(zlibFolder ../../External/zlib)
 cmake_path(ABSOLUTE_PATH zlibFolder NORMALIZE OUTPUT_VARIABLE zlibFolder)
