@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10)
 
 # Add source to this project's executable.
 file(GLOB_RECURSE sourceFiles
