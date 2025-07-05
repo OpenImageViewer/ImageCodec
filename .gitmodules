@@ -18,10 +18,10 @@
 	url = https://github.com/OpenImageViewer/libgif.git
 [submodule "External/libtiff"]
 	path = External/libtiff
-	url = https://github.com/OpenImageViewer/libtiff.git
+	url = https://gitlab.com/libtiff/libtiff.git
 [submodule "External/libjpeg-turbo"]
 	path = External/libjpeg-turbo
-	url = https://github.com/OpenImageViewer/libjpeg-turbo.git
+	url = https://github.com/libjpeg-turbo/libjpeg-turbo.git
 [submodule "External/bintools"]
 	path = External/bintools
 	url = https://github.com/OpenImageViewer/bintools.git
