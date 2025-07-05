@@ -32,14 +32,18 @@ add_subdirectory(${zlibFolder} ./external/zlib)
 
 list(APPEND ZLIB_INCLUDE_DIRS "${zlibFolder}")
 list(APPEND ZLIB_INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}/external/zlib")
+set(ZLIB_INCLUDE_DIR ${zlibFolder})
 set(ZLIB_LIBRARIES zlib)
+set(ZLIB_FOUND TRUE)
+set(ZLIB_ROOT, ${zlibFolder})
+set(ZLIB_LIBRARY ${zlibFolder})
+
 
 #LibPNG
 option(PNG_SHARED       "Build shared lib" ON)
 option(PNG_STATIC       "Build static lib" OFF)
 option(PNG_TESTS        "Build libpng tests" OFF)
-option(PNG_EXECUTABLES  "Build libpng executables" OFF)
-option(PNG_BUILD_ZLIB   "Custom zlib Location, else find_package is used" ON)
+option(PNG_TOOLS        "Build libpng tools" OFF)
 
 
 set(SKIP_INSTALL_LIBRARIES TRUE)

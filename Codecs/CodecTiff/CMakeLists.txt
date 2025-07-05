@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10)
 
 # Add source to this project's executable.
 file(GLOB_RECURSE sourceFiles
@@ -8,7 +8,14 @@ file(GLOB_RECURSE sourceFiles
 
 set(TargetName CodecTiff)
 add_library (${TargetName} ${sourceFiles} )
-set(TIFF_BUILD_SHARED_LIBS TRUE)
+
+option(tiff-static "build TIFF static libraries" OFF)
+option(tiff-tools "build TIFF tools" OFF)
+option(tiff-tests "build TIFF tests" OFF)
+option(tiff-contrib "build TIFF contrib" OFF)
+option(tiff-docs "build TIFF documentation" OFF)
+option(tiff-deprecated "build TIFF deprecated features" OFF)
+
 set(TIFF_BUILD_CXX FALSE)
 set(LibTiffFolder ../../External/libtiff)
 add_subdirectory(${LibTiffFolder} ./external/libtiff)
@@ -47,14 +54,6 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-switch-default
             )
 
-            target_compile_options(port PRIVATE 
-            -Wno-missing-prototypes
-            -Wno-strict-prototypes
-            -Wno-reserved-macro-identifier
-            -Wno-reserved-identifier
-            -Wno-missing-variable-declarations
-            -Wno-unsafe-buffer-usage
-            )
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         target_compile_options(tiff PRIVATE -Wno-array-parameter -Wno-misleading-indentation)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
