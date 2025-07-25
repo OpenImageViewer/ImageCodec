@@ -21,8 +21,13 @@ endif()
 
 # ======== Platform-specific file extensions ========
 if(WIN32)
-    set(JPG_RUNTIME_NAME "turbojpeg.dll")
-    set(JPG_IMPLIB_NAME "turbojpeg.lib")
+    if (MINGW)
+        set(JPG_RUNTIME_NAME "libturbojpeg.dll")
+        set(JPG_IMPLIB_NAME "libturbojpeg.dll.a")
+    else()
+        set(JPG_RUNTIME_NAME "turbojpeg.dll")
+        set(JPG_IMPLIB_NAME "turbojpeg.lib")
+    endif()
 elseif(APPLE)
     set(JPG_RUNTIME_NAME  "libturbojpeg.dylib")
     set(JPG_IMPLIB_NAME "") # No import libs on macOS
@@ -50,6 +55,10 @@ set(LibJpegTurboArgs
     -DCMAKE_INSTALL_PREFIX=${TurboJpegBinBaseDir}/install
 )
 
+if (CMAKE_TOOLCHAIN_FILE)
+    get_filename_component(CMAKE_TOOLCHAIN_FILE_ABSOLUTE "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE)
+    list(APPEND LibJpegTurboArgs -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE_ABSOLUTE})
+endif()
 # Enable NASM on Windows if needed
 if(WIN32 AND NOT ${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
     list(APPEND LibJpegTurboArgs -DCMAKE_ASM_NASM_COMPILER=${NASMPATH})
