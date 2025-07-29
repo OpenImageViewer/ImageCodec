@@ -42,7 +42,7 @@ namespace IMCodec
             return mPluginProperties;
         }
 
-        TexelFormat GetTexelFormat(uint16_t sampleFormat, uint16 bitsPerSample, uint16_t samplesPerPixel, uint16_t photoMetric) const
+        TexelFormat GetTexelFormat(uint16_t sampleFormat, uint16_t bitsPerSample, uint16_t samplesPerPixel, uint16_t photoMetric) const
         {
             TexelFormat texelFormat = TexelFormat::UNKNOWN;
 
@@ -168,11 +168,11 @@ namespace IMCodec
 
             uint16_t sampleFormat{};
 
-            uint32 width, height{};
-            uint16 bitsPerSample{};
+            uint32_t width, height{};
+            uint16_t bitsPerSample{};
             //uint16 compression{};
-            uint16 photoMetric{};
-            uint16 samplesPerPixel{};
+            uint16_t photoMetric{};
+            uint16_t samplesPerPixel{};
             uint16_t orientation{};
             uint32_t rowPitch{};
             //uint32 rowsPerStrip{};
@@ -248,7 +248,7 @@ namespace IMCodec
                 //override target row pitch - always 32bpp
                 imageItem->descriptor.rowPitchInBytes = width * 4;
                 imageItem->data.Allocate(height * imageItem->descriptor.rowPitchInBytes);
-                TIFFReadRGBAImageOriented(tiff, width, height, reinterpret_cast<uint32*>(imageItem->data.data()), orientation);
+                TIFFReadRGBAImageOriented(tiff, width, height, reinterpret_cast<uint32_t*>(imageItem->data.data()), orientation);
             }
             
 

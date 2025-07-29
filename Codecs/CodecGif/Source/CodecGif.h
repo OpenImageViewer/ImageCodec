@@ -247,8 +247,7 @@ namespace IMCodec
                     imageItem->descriptor.rowPitchInBytes = IMCodec::GetTexelFormatSize(imageItem->descriptor.texelFormatDecompressed) * imageItem->descriptor.width / CHAR_BIT;
                     imageItem->data = std::move(frameBuffers.at(imageIndex));
                     imageItem->animationData.delayMilliseconds = currentFrameData.gcb.DelayTime * 10; // multiply by 10 to convert centiseconds to milliseconds.
-                    imageItem->processData.pluginUsed = GetPluginProperties().id;
-
+                    
                     //Estimation on frame loading time, since frame are loaded together is a bit cumbersome to precisly time the 'load time'
 
                     if (loadTIme == -1)
@@ -256,8 +255,6 @@ namespace IMCodec
                         using namespace LLUtils;
                         loadTIme = static_cast<double>(stopWatch.GetElapsedTimeReal(StopWatch::TimeUnit::Milliseconds));
                     }
-
-                    imageItem->processData.processTime = loadTIme;
                     
                     if (isMultiImage)
                         out_image->SetSubImage(imageIndex, std::make_shared<Image>(imageItem, ImageItemType::Unknown));
