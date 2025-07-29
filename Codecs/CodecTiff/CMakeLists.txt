@@ -23,6 +23,9 @@ add_subdirectory(${LibTiffFolder} ./external/libtiff)
 if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
        target_compile_options(tiff PRIVATE 
+            -Wno-extra-semi
+            -Wno-declaration-after-statement
+            -Wno-format
             -Wno-nonportable-system-include-path 
             -Wno-cast-align 
             -Wno-strict-prototypes 
@@ -52,6 +55,13 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-unused-parameter
             -Wno-unsafe-buffer-usage
             -Wno-switch-default
+            )
+
+            target_compile_options(tiff_port PRIVATE 
+            -Wno-missing-variable-declarations
+            -Wno-unsafe-buffer-usage
+            -Wno-reserved-macro-identifier
+            -Wno-undef
             )
 
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
