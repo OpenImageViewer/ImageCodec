@@ -4,8 +4,7 @@
 #include <LLUtils/Exception.h>
 #include "ImageCommon.h"
 #include "ImageItem.h"
-#include <variant>
-#include <map>
+#include "ImagePluginParameters.h"
 
 namespace IMCodec
 {
@@ -54,9 +53,7 @@ namespace IMCodec
     };
 
 
-    using Parameter = std::variant<int, double, string_type>;
-    using Parameters = std::map<string_type, Parameter>;
-
+   
     struct ParameterDescriptor
     {
         string_type name;
