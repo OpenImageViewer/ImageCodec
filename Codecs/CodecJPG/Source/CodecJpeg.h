@@ -63,16 +63,13 @@ namespace IMCodec
         {
             static thread_local tjhandle ftjHandle = tjInitDecompress();
             ImageResult result = ImageResult::UnknownError;
-/*
             int canvasWidth = 0;
+            if (const int* width = params.GetCustomAs<int>(LLUTILS_TEXT("canvasWidth")))
+                canvasWidth = *width;
+
             int canvasHeight = 0;
-
-            if (params.contains(L"canvasWidth"))
-                canvasWidth = std::get<int>(params.at(L"canvasWidth"));
-
-            if (params.contains(L"canvasHeight"))
-                canvasHeight = std::get<int>(params.at(L"canvasHeight"));
-*/
+            if (const int* height = params.GetCustomAs<int>(LLUTILS_TEXT("canvasHeight")))
+                canvasHeight = *height;
         
         
             int width = 0;
