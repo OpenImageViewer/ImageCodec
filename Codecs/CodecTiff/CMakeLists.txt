@@ -57,12 +57,17 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
             -Wno-switch-default
             )
 
-            target_compile_options(tiff_port PRIVATE 
-            -Wno-missing-variable-declarations
-            -Wno-unsafe-buffer-usage
-            -Wno-reserved-macro-identifier
-            -Wno-undef
-            )
+            if (TARGET tiff_port)
+                get_target_property(tiff_port_type tiff_port TYPE)
+                if (NOT tiff_port_type STREQUAL "INTERFACE_LIBRARY")
+                    target_compile_options(tiff_port PRIVATE 
+                    -Wno-missing-variable-declarations
+                    -Wno-unsafe-buffer-usage
+                    -Wno-reserved-macro-identifier
+                    -Wno-undef
+                    )
+                endif()
+            endif()
 
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         target_compile_options(tiff PRIVATE -Wno-array-parameter -Wno-misleading-indentation)
