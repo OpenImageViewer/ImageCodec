@@ -47,6 +47,8 @@ if ( ${IMCODEC_BUILD_CODEC_FREEIMAGE})
 endif()
 
 target_link_libraries(${TargetName} PRIVATE TinyEXIFstatic)
-target_link_libraries(${TargetName} PUBLIC delayimp)
-
-
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND
+    (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") AND
+    NOT MINGW)
+    target_link_libraries(${TargetName} PUBLIC delayimp)
+endif()
