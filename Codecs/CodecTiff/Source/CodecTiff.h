@@ -9,6 +9,8 @@
 #include <LLUtils/Exception.h>
 #include <IImagePlugin.h>
 
+#include <utility>
+
 namespace IMCodec
 {
     class CodecTiff : public IImagePlugin
@@ -66,19 +68,14 @@ namespace IMCodec
                 case SAMPLEFORMAT_UINT:
                     switch (samplesPerPixel)
                     {
-                    case 1:
-                        switch (bitsPerSample)
-                        {
-                        case 8:
-                            texelFormat = TexelFormat::I_A8;
-                            break;
-                        }
-                        break;
                     case 3:
                         switch (bitsPerSample)
                         {
                         case 8:
                             texelFormat = TexelFormat::I_R8_G8_B8;
+                            break;
+                        case 16:
+                            texelFormat = TexelFormat::I_R16_G16_B16;
                             break;
                         }
                         break;
@@ -87,6 +84,9 @@ namespace IMCodec
                         {
                         case 8:
                             texelFormat = TexelFormat::I_R8_G8_B8_A8;
+                            break;
+                        case 16:
+                            texelFormat = TexelFormat::I_R16_G16_B16_A16;
                             break;
                         }
                         break;
@@ -112,6 +112,9 @@ namespace IMCodec
                         case 32:
                             texelFormat = TexelFormat::F_X32;
                             break;
+                        case 64:
+                            texelFormat = TexelFormat::F_X64;
+                            break;
                         default:
                             break;
                         }
@@ -127,37 +130,42 @@ namespace IMCodec
                         case 1:
                             texelFormat = TexelFormat::I_X1;
                             break;
+                        case 4:
+                            texelFormat = TexelFormat::I_X4;
+                            break;
                         case 8:
                             texelFormat = TexelFormat::I_X8;
                             break;
                         case 16:
                             texelFormat = TexelFormat::I_X16;
                             break;
-                        case SAMPLEFORMAT_INT:
-                            switch (bitsPerSample)
-                            {
-                            case 8:
-                                texelFormat = TexelFormat::S_X8;
-                                break;
-                            case 16:
-                                texelFormat = TexelFormat::S_X16;
-                                break;
-                            default:
-                                break;
-                            }
+                        }
+                        break;
+                    }
+                    break;
+                case SAMPLEFORMAT_INT:
+                    switch (samplesPerPixel)
+                    {
+                    case 1:
+                        switch (bitsPerSample)
+                        {
+                        case 8:
+                            texelFormat = TexelFormat::S_X8;
+                            break;
+                        case 16:
+                            texelFormat = TexelFormat::S_X16;
+                            break;
+                        default:
                             break;
                         }
                         break;
                     }
+                    break;
                 }
             }
 
-
-                if (texelFormat == TexelFormat::UNKNOWN)
-                    LL_ERROR(LLUtils::Exception::ErrorCode::NotImplemented, "CodecTiff: unsupported floating point format.");
-
-                return texelFormat;
-            }
+            return texelFormat;
+        }
 
         std::vector<ImageItemSharedPtr> GetImage(TIFF* tiff)
         {
@@ -201,6 +209,9 @@ namespace IMCodec
             TIFFGetField(tiff, TIFFTAG_MAXSAMPLEVALUE, &maxSampleValue);*/
             TIFFGetField(tiff, TIFFTAG_EXTRASAMPLES, &extraSamples, &sampleTypes);
 
+            if (samplesPerPixel <= extraSamples)
+                return {};
+
             const uint32_t bytesPerSample = bitsPerSample / CHAR_BIT;
 
             uint32_t numberOfStripts = TIFFNumberOfStrips(tiff);
@@ -229,17 +240,38 @@ namespace IMCodec
                 //If there's an alpha channel and it's interleaved in the image data, return as single image with alpha channel
                 imageItem->descriptor.texelFormatDecompressed = imageItem->descriptor.texelFormatStorage = mainChannelTexelFormat;
 
-                if (planarConfig == PLANARCONFIG_CONTIG && extraSamples == 1 && sampleTypes[0] > 0)
+                auto extractExtraSampleImages = [&]()
                 {
-                    imageItem->descriptor.texelFormatStorage = imageItem->descriptor.texelFormatDecompressed = GetTexelFormat(sampleFormat, bitsPerSample, samplesPerPixel, photoMetric);
-                }
-                else
-                {
-                    auto extraChannelImages = ExtactExtraSamples(width, height, rowPitch, samplesPerPixel, extraSamples, planarConfig
+                    return ExtactExtraSamples(width, height, rowPitch, samplesPerPixel, extraSamples, planarConfig
                         , bytesPerSample, imageItem->data, photoMetric, bitsPerSample, sampleFormat);
+                };
+
+                if (planarConfig == PLANARCONFIG_CONTIG && extraSamples > 0)
+                {
+                    const auto interleavedTexelFormat = GetTexelFormat(sampleFormat, bitsPerSample, samplesPerPixel, photoMetric);
+
+                    if (interleavedTexelFormat != TexelFormat::UNKNOWN)
+                    {
+                        imageItem->descriptor.texelFormatStorage = imageItem->descriptor.texelFormatDecompressed = interleavedTexelFormat;
+                    }
+                    else
+                    {
+                        auto extraChannelImages = extractExtraSampleImages();
+
+                        if (extraChannelImages.empty() == false)
+                            imageItems = extraChannelImages;
+                        else
+                            return {};
+                    }
+                }
+                else if (extraSamples > 0)
+                {
+                    auto extraChannelImages = extractExtraSampleImages();
 
                     if (extraChannelImages.empty() == false)
                         imageItems = extraChannelImages;
+                    else
+                        return {};
                 }
             }
             else
@@ -274,9 +306,13 @@ namespace IMCodec
             {
 
                 const auto sampleSize = sampleCount * bytesPerSample;
+                const auto samplePhotometric = sampleOffset == 0 ? photometric : PHOTOMETRIC_MINISBLACK;
 
                 auto imageItem = std::make_shared<ImageItem>();
-                imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample , sampleCount, photometric);
+                imageItem->descriptor.texelFormatStorage = GetTexelFormat(sampleFormat, bitsPerSample , sampleCount, samplePhotometric);
+                if (imageItem->descriptor.texelFormatStorage == TexelFormat::UNKNOWN)
+                    return {};
+
                 imageItem->descriptor.texelFormatDecompressed = imageItem->descriptor.texelFormatStorage;
                 imageItem->descriptor.height = height;
                 imageItem->descriptor.width = width;
@@ -293,7 +329,7 @@ namespace IMCodec
                     {
                         for (size_t x = 0; x < width; x++)
                         {
-                            const size_t sourceRowIndex = sampleOffset * sampleSize + x * samplesPerPixel * bytesPerSample;
+                            const size_t sourceRowIndex = sampleOffset * bytesPerSample + x * samplesPerPixel * bytesPerSample;
                             const size_t destRowIndex = x * sampleSize;
                             memcpy(image.data() + destOffset + destRowIndex, sourceBuffer.data() + sourceOffset + sourceRowIndex, sampleSize);
                         }
@@ -318,12 +354,25 @@ namespace IMCodec
 
             if (extraSmaples > 0)
             {
+                if (bytesPerSample == 0 || bitsPerSample % CHAR_BIT != 0 || samplesPerPixel <= extraSmaples)
+                    return {};
+
                 const auto mainImageSampleCount = samplesPerPixel - extraSmaples;
 
-                subChannels.push_back(extractSamples(0, mainImageSampleCount));
+                auto mainImage = extractSamples(0, mainImageSampleCount);
+                if (mainImage == nullptr)
+                    return {};
+
+                subChannels.push_back(std::move(mainImage));
 
                 for (int i = 0; i < extraSmaples; i++)
-                    subChannels.push_back(extractSamples(mainImageSampleCount + i, 1));
+                {
+                    auto extraImage = extractSamples(mainImageSampleCount + i, 1);
+                    if (extraImage == nullptr)
+                        return {};
+
+                    subChannels.push_back(std::move(extraImage));
+                }
             }
 
 
@@ -344,6 +393,9 @@ namespace IMCodec
                 int currentSubImage = 0;
 
                 auto firstImageItemChannles = GetImage(tiff);
+                if (firstImageItemChannles.empty())
+                    return ImageResult::FormatNotSupported;
+
                 firstImageItem = firstImageItemChannles.at(0);
 
                 if (firstImageItemChannles.size() > 1)
@@ -365,6 +417,9 @@ namespace IMCodec
                     }
 
                     auto nextImages = GetImage(tiff);
+                    if (nextImages.empty())
+                        return ImageResult::FormatNotSupported;
+
                     for (size_t i = 0; i < nextImages.size(); i++)
                     {
                         subImages.push_back(std::make_shared<Image>(nextImages.at(i), ImageItemType::Pages));
