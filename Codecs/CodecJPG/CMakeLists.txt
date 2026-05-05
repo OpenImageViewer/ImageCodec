@@ -149,7 +149,3 @@ set(TargetName CodecJPG)
 add_library (${TargetName} ${sourceFiles} )
 
 target_link_libraries(${TargetName} PRIVATE libjpeg-turbo::libjpeg-turbo)  # adjust to match built target name
-
-if (${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC") AND NOT MINGW)
-    target_link_options(${TargetName} PUBLIC "/DELAYLOAD:turbojpeg.dll")
-endif()
