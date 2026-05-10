@@ -17,15 +17,15 @@ namespace IMCodec
                 // {0CA17E19-92E7-4926-A8FC-34E7086BA27F}
                  { 0xca17e19, 0x92e7, 0x4926, { 0xa8, 0xfc, 0x34, 0xe7, 0x8, 0x6b, 0xa2, 0x7f } }
                 ,CodecCapabilities::Decode | CodecCapabilities::BulkCodec
-                 , L"Free image codec"
+                 , LLUTILS_TEXT("Free image codec")
                 ,
                 {
                     {
-                        { L"Image formats collection"}
+                        { LLUTILS_TEXT("Image formats collection")}
 
-                        ,{ L"BMP",L"ICO",L"JPEG",L"JNG",L"KOALA",L"LBM",L"IFF",L"MNG",L"PBM",L"PBMRAW",L"PCD",L"PGM",L"PGMRAW",L"PNG"
-                          ,L"PPM",L"PPMRAW",L"RAS",L"TGA",L"TIFF",L"TIF",L"WBMP",L"PSD",L"CUT",L"XBM",L"XPM",L"DDS",L"GIF",L"HDR",L"FAXG3"
-                           ,L"SGI",L"EXR",L"J2K",L"JP2",L"PFM",L"PICT",L"RAW",L"WEBP",L"JXR",L"CUR"
+                        ,{ LLUTILS_TEXT("BMP"),LLUTILS_TEXT("ICO"),LLUTILS_TEXT("JNG"),LLUTILS_TEXT("KOALA"),LLUTILS_TEXT("LBM"),LLUTILS_TEXT("IFF"),LLUTILS_TEXT("MNG"),LLUTILS_TEXT("PBM"),LLUTILS_TEXT("PBMRAW"),LLUTILS_TEXT("PCD"),LLUTILS_TEXT("PGM"),LLUTILS_TEXT("PGMRAW")
+                          ,LLUTILS_TEXT("PPM"),LLUTILS_TEXT("PPMRAW"),LLUTILS_TEXT("RAS"),LLUTILS_TEXT("TGA"),LLUTILS_TEXT("WBMP"),LLUTILS_TEXT("PSD"),LLUTILS_TEXT("CUT"),LLUTILS_TEXT("XBM"),LLUTILS_TEXT("XPM"),LLUTILS_TEXT("DDS"),LLUTILS_TEXT("GIF")
+                           ,LLUTILS_TEXT("HDR"),LLUTILS_TEXT("FAXG3"),LLUTILS_TEXT("SGI"),LLUTILS_TEXT("PFM"),LLUTILS_TEXT("PICT"),LLUTILS_TEXT("JXR"),LLUTILS_TEXT("CUR")
                         }
                     }
                 }
@@ -49,10 +49,10 @@ namespace IMCodec
             if (freeImageHandle && FreeImage_FlipVertical(freeImageHandle))
             {
 
-                BITMAPINFO* imageInfo = FreeImage_GetInfo(freeImageHandle);
-                FREE_IMAGE_TYPE TexelFormat = FreeImage_GetImageType(freeImageHandle);
+                FIBITMAPINFO* imageInfo = FreeImage_GetInfo(freeImageHandle);
+                FREE_IMAGE_TYPE freeImageType = FreeImage_GetImageType(freeImageHandle);
 
-                const BITMAPINFOHEADER& header = imageInfo->bmiHeader;
+                const FIBITMAPINFOHEADER& header = imageInfo->bmiHeader;
 
                 auto imageItem = std::make_shared<ImageItem>();
                 imageItem->itemType = ImageItemType::Image;
@@ -67,7 +67,7 @@ namespace IMCodec
                 imageItem->data.Write(reinterpret_cast<std::byte*>(FreeImage_GetBits(freeImageHandle)), 0, imageSizeInMemory);
 
 
-                switch (TexelFormat)
+                switch (freeImageType)
                 {
                 case FIT_BITMAP:
                 {

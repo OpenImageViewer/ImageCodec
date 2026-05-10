@@ -10,11 +10,17 @@ file(GLOB_RECURSE sourceFiles
 
 set(TargetName CodecFreeImage)
 add_library (${TargetName} STATIC ${sourceFiles})
-target_link_libraries(${TargetName} d:/DevelopmentExternal/FreeImage3180Win32Win64/FreeImage/Dist/x64/FreeImage.lib)
-include_directories(D:/DevelopmentExternal/FreeImage3180Win32Win64/FreeImage/Dist/x64)
 
-#FreeImage from source
-#set(FreeImageFolder ../../External/FreeImage)
-#add_subdirectory(${FreeImageFolder} ./External/FreeImage)
-#target_include_directories(${TargetName} PRIVATE ${FreeImageFolder}/Source)
-#target_link_libraries(${TargetName} PRIVATE FreeImage)
+set(FreeImageReFolder ${CMAKE_CURRENT_LIST_DIR}/../../External/FreeImageRe)
+set(EXTERNALPROJECT_SOURCE_ROOT ${CMAKE_CURRENT_BINARY_DIR}/External/FreeImageRe/dependencies/source CACHE PATH "FreeImageRe dependency source directory")
+set(EXTERNALPROJECT_BINARY_ROOT ${CMAKE_CURRENT_BINARY_DIR}/External/FreeImageRe/dependencies/build CACHE PATH "FreeImageRe dependency build directory")
+foreach(FreeImageReBackend LIBJPEG LIBOPENJPEG LIBOPENEXR LIBPNG LIBTIFF LIBWEBP LIBRAW LIBHEIF LIBJPEGXL)
+    set(FREEIMAGE_WITH_${FreeImageReBackend} OFF CACHE BOOL "Compile FreeImageRe with the ${FreeImageReBackend} backend" FORCE)
+endforeach()
+
+if(NOT TARGET FreeImage)
+    add_subdirectory(${FreeImageReFolder} ${CMAKE_CURRENT_BINARY_DIR}/External/FreeImageRe)
+endif()
+
+target_include_directories(${TargetName} PRIVATE ${FreeImageReFolder}/Source)
+target_link_libraries(${TargetName} PRIVATE FreeImage)
