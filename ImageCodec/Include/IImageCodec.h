@@ -20,7 +20,7 @@ namespace IMCodec
         virtual ImageResult Encode(const ImageSharedPtr image, const PluginID& pluginId, const Parameters& params, LLUtils::Buffer& encoded) = 0;
         virtual ImageResult GetEncoderParameters(const PluginID& pluginID, ListParameterDescriptors& out_encodeParameters) = 0;
         virtual ImageResult InstallPlugin(IImagePlugin* plugin) = 0;
-        virtual ImageResult InstallPlugin(const std::wstring& pluginFilePath) = 0;
+        virtual ImageResult InstallPlugin(const LLUtils::native_string_type& pluginFilePath) = 0;
         virtual ImageResult GetPluginInfo(const PluginID& pluginID, PluginProperties& pluginProperties) = 0;
         virtual std::vector<PluginProperties> GetPluginsInfo() = 0;
     };

@@ -93,7 +93,7 @@ namespace IMCodec
         return ImageResult::Success;
     }
 
-    ImageResult ImageCodec::InstallPlugin(const std::wstring& pluginFilePath)
+    ImageResult ImageCodec::InstallPlugin(const LLUtils::native_string_type& pluginFilePath)
     {
         return ImageResult::NotImplemented;
     }

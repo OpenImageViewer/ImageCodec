@@ -16,7 +16,7 @@ namespace IMCodec
         ImageResult Encode(const ImageSharedPtr image, const PluginID& pluginId, const Parameters& params, LLUtils::Buffer& encoded) override;
 
         ImageResult InstallPlugin(IImagePlugin* plugin) override;
-        ImageResult InstallPlugin(const std::wstring& pluginFilePath) override;
+        ImageResult InstallPlugin(const LLUtils::native_string_type& pluginFilePath) override;
 
         ImageResult GetEncoderParameters(const PluginID& pluginID, ListParameterDescriptors& out_encodeParameters) override;
 
