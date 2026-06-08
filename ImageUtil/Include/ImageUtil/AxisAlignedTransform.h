@@ -24,6 +24,6 @@ namespace IMUtil
         AxisAlignedRotation rotation;
         AxisAlignedFlip flip;
     };
-}
 
-LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(IMUtil::AxisAlignedFlip)
+    LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(AxisAlignedFlip)
+}

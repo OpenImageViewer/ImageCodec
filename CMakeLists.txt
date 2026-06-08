@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.10)
 project(ImageCodec)
 
 #Image Codec
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND ${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
 	message("Cross compiling: Host: linux, Target: Windows")
