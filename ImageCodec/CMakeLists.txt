@@ -62,4 +62,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows" AND
     if ( ${IMCODEC_BUILD_CODEC_TIFF})
         target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:tiff>.dll")
     endif()
+    if ( ${IMCODEC_BUILD_CODEC_FREEIMAGE})
+        target_link_options(${TargetName} PUBLIC "/DELAYLOAD:$<TARGET_FILE_BASE_NAME:FreeImage>.dll")
+    endif()
 endif()
