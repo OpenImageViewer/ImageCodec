@@ -23,9 +23,9 @@ namespace IMCodec
                     {
                         { LLUTILS_TEXT("Image formats collection")}
 
-                        ,{ LLUTILS_TEXT("BMP"),LLUTILS_TEXT("ICO"),LLUTILS_TEXT("JNG"),LLUTILS_TEXT("KOALA"),LLUTILS_TEXT("LBM"),LLUTILS_TEXT("IFF"),LLUTILS_TEXT("MNG"),LLUTILS_TEXT("PBM"),LLUTILS_TEXT("PBMRAW"),LLUTILS_TEXT("PCD"),LLUTILS_TEXT("PGM"),LLUTILS_TEXT("PGMRAW")
+                        ,{ LLUTILS_TEXT("BMP"),LLUTILS_TEXT("ICO"),LLUTILS_TEXT("JNG"),LLUTILS_TEXT("KOALA"),LLUTILS_TEXT("LBM"),LLUTILS_TEXT("IFF"),LLUTILS_TEXT("MNG"),LLUTILS_TEXT("PBM"),LLUTILS_TEXT("PBMRAW"),LLUTILS_TEXT("PCD"),LLUTILS_TEXT("PCX"),LLUTILS_TEXT("PGM"),LLUTILS_TEXT("PGMRAW")
                           ,LLUTILS_TEXT("PPM"),LLUTILS_TEXT("PPMRAW"),LLUTILS_TEXT("RAS"),LLUTILS_TEXT("TGA"),LLUTILS_TEXT("WBMP"),LLUTILS_TEXT("PSD"),LLUTILS_TEXT("CUT"),LLUTILS_TEXT("XBM"),LLUTILS_TEXT("XPM"),LLUTILS_TEXT("DDS"),LLUTILS_TEXT("GIF")
-                           ,LLUTILS_TEXT("HDR"),LLUTILS_TEXT("FAXG3"),LLUTILS_TEXT("SGI"),LLUTILS_TEXT("PFM"),LLUTILS_TEXT("PICT"),LLUTILS_TEXT("JXR"),LLUTILS_TEXT("CUR")
+                           ,LLUTILS_TEXT("HDR"),LLUTILS_TEXT("SGI"),LLUTILS_TEXT("PFM"),LLUTILS_TEXT("PICT"),LLUTILS_TEXT("RAW"),LLUTILS_TEXT("JXR")
                         }
                     }
                 }
@@ -43,7 +43,7 @@ namespace IMCodec
 
             using namespace IMCodec;
 
-            FIMEMORY* memStream = FreeImage_OpenMemory(reinterpret_cast<BYTE*>(const_cast<std::byte*>( buffer)),static_cast<DWORD>(size));
+            FIMEMORY* memStream = FreeImage_OpenMemory(reinterpret_cast<uint8_t*>(const_cast<std::byte*>( buffer)),static_cast<uint32_t>(size));
             FREE_IMAGE_FORMAT format =  FreeImage_GetFileTypeFromMemory(memStream, static_cast<int>(size));
             freeImageHandle = FreeImage_LoadFromMemory(format, memStream, 0);
             if (freeImageHandle && FreeImage_FlipVertical(freeImageHandle))
