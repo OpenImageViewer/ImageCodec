@@ -25,7 +25,7 @@ namespace IMCodec
 
                         ,{ LLUTILS_TEXT("BMP"),LLUTILS_TEXT("ICO"),LLUTILS_TEXT("JNG"),LLUTILS_TEXT("KOALA"),LLUTILS_TEXT("LBM"),LLUTILS_TEXT("IFF"),LLUTILS_TEXT("MNG"),LLUTILS_TEXT("PBM"),LLUTILS_TEXT("PBMRAW"),LLUTILS_TEXT("PCD"),LLUTILS_TEXT("PCX"),LLUTILS_TEXT("PGM"),LLUTILS_TEXT("PGMRAW")
                           ,LLUTILS_TEXT("PPM"),LLUTILS_TEXT("PPMRAW"),LLUTILS_TEXT("RAS"),LLUTILS_TEXT("TGA"),LLUTILS_TEXT("WBMP"),LLUTILS_TEXT("PSD"),LLUTILS_TEXT("CUT"),LLUTILS_TEXT("XBM"),LLUTILS_TEXT("XPM"),LLUTILS_TEXT("DDS"),LLUTILS_TEXT("GIF")
-                           ,LLUTILS_TEXT("HDR"),LLUTILS_TEXT("SGI"),LLUTILS_TEXT("PFM"),LLUTILS_TEXT("PICT"),LLUTILS_TEXT("RAW"),LLUTILS_TEXT("JXR")
+                           ,LLUTILS_TEXT("HDR"),LLUTILS_TEXT("SGI"),LLUTILS_TEXT("PFM"),LLUTILS_TEXT("PICT"),LLUTILS_TEXT("DNG"),LLUTILS_TEXT("RAW"),LLUTILS_TEXT("JXR")
                         }
                     }
                 }
@@ -100,6 +100,14 @@ namespace IMCodec
 
                     }
                 }
+                case FIT_RGB16:
+                switch (header.biBitCount)
+                {
+                case 48:
+                        imageItem->descriptor.texelFormatDecompressed = TexelFormat::I_R16_G16_B16;
+                        break;
+                }
+
                 break;
                 default:
                     LL_EXCEPTION_NOT_IMPLEMENT("Decoding the type of texture is yet to be implemented.");
