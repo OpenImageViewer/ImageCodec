@@ -45,11 +45,19 @@ option(PNG_STATIC       "Build static lib" OFF)
 option(PNG_TESTS        "Build libpng tests" OFF)
 option(PNG_TOOLS        "Build libpng tools" OFF)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(PNG_PREFIX "imcodec_" CACHE STRING "Prefix for ImageCodec's private libpng API" FORCE)
+endif()
 
 set(SKIP_INSTALL_LIBRARIES TRUE)
 set(SKIP_INSTALL_ALL TRUE)
 
 add_subdirectory(${LibPNGFolder} ./external/libpng)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    get_target_property(IMCODEC_PNG_OUTPUT_NAME png_shared OUTPUT_NAME)
+    set_target_properties(png_shared PROPERTIES OUTPUT_NAME "imcodec_${IMCODEC_PNG_OUTPUT_NAME}")
+endif()
 
 if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
