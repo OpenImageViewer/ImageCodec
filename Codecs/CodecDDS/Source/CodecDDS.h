@@ -39,50 +39,55 @@ namespace IMCodec
             return mPluginProperties;
         }
 
-
-        void LoadSurface(bool isCompressed , unsigned storageFormat, const nv_dds::CSurface& surface , TexelFormat format, ImageItem& item)
+        void LoadSurface(bool isCompressed, unsigned storageFormat, const nv_dds::CSurface& surface, TexelFormat format,
+                         ImageItem& item)
         {
             LLUtils::Buffer decompressedBuffer;
 
             const uint32_t decompressedTexelSize = GetTexelFormatSize(format) / CHAR_BIT;
             if (isCompressed)
             {
-
-                decompressedBuffer.Allocate(decompressedTexelSize * LLUtils::Utility::Align<size_t>( surface.get_width(), 4) * LLUtils::Utility::Align<size_t>(surface.get_height(), 4));
+                decompressedBuffer.Allocate(decompressedTexelSize * static_cast<size_t>(surface.get_width()) *
+                                            surface.get_height());
 
                 switch (storageFormat)
                 {
-                case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
-                case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-                    BlockDecompressImageDXT1(surface.get_width(), surface.get_height(), static_cast<uint8_t*>(surface), reinterpret_cast<unsigned long*>(decompressedBuffer.data()));
-                    break;
-                case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-                    BlockDecompressImageDXT5(surface.get_width(), surface.get_height(), static_cast<uint8_t*>(surface), reinterpret_cast<unsigned long*>(decompressedBuffer.data()));
-                    break;
-                    //TODO: add implementation for decompressing DXT3 
-                case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
-                default:
-                    LL_EXCEPTION_NOT_IMPLEMENT(std::string(" DDS format: ") + std::to_string(storageFormat) + " is not implemented");
-                    break;
+                    case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
+                    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
+                        BlockDecompressImageDXT1(surface.get_width(), surface.get_height(),
+                                                 static_cast<uint8_t*>(surface),
+                                                 reinterpret_cast<uint32_t*>(decompressedBuffer.data()));
+                        break;
+                    case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
+                        BlockDecompressImageDXT5(surface.get_width(), surface.get_height(),
+                                                 static_cast<uint8_t*>(surface),
+                                                 reinterpret_cast<uint32_t*>(decompressedBuffer.data()));
+                        break;
+                        // TODO: add implementation for decompressing DXT3
+                    case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
+                    default:
+                        LL_EXCEPTION_NOT_IMPLEMENT(std::string(" DDS format: ") + std::to_string(storageFormat) +
+                                                   " is not implemented");
+                        break;
                 }
             }
             else
             {
-                //Not compressed, copy as is.
+                // Not compressed, copy as is.
                 decompressedBuffer.Allocate(surface.get_size());
-                decompressedBuffer.Write(reinterpret_cast<const std::byte*>(static_cast<uint8_t*>(surface)), 0, surface.get_size());
+                decompressedBuffer.Write(reinterpret_cast<const std::byte*>(static_cast<uint8_t*>(surface)), 0,
+                                         surface.get_size());
             }
 
+            item.descriptor.width                   = surface.get_width();
+            item.descriptor.height                  = surface.get_height();
             item.descriptor.texelFormatDecompressed = format;
-            item.descriptor.width = surface.get_width();
-            item.descriptor.height = surface.get_height();
-            item.descriptor.texelFormatDecompressed = format;
-            item.data = std::move(decompressedBuffer);
+            item.data                               = std::move(decompressedBuffer);
 
-            //TODO: chech if need to extract row pitch from DDS.
+            // TODO: check if the source row pitch is needed for uncompressed DDS images.
             item.descriptor.rowPitchInBytes = surface.get_width() * decompressedTexelSize;
         }
-        
+
         ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
         {
             using namespace std;
@@ -113,8 +118,6 @@ namespace IMCodec
                 switch (format)
                 {
                 case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-                    texelFormat = TexelFormat::I_B8_G8_R8;
-                    break;
                 case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
                     texelFormat = TexelFormat::I_A8_B8_G8_R8;
                     break;
