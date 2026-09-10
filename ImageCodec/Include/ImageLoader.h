@@ -1,5 +1,7 @@
 #pragma once
 #include <map>
+#include <filesystem>
+#include <LLUtils/StringUtility.h>
 #include "Image.h"
 #include "ImageCodec.h"
 #include "ImageMetaDataLoader.h"
@@ -136,33 +138,28 @@ namespace IMCodec
                 return result;
         }
 
-
-        ImageResult Decode(const string_type& filePath 
-            , ImageLoadFlags imageLoadFlags
-            , const Parameters& params
-            , PluginTraverseMode traverseMode
-            , ImageSharedPtr& out_image)
+        ImageResult Decode(const string_type& filePath, ImageLoadFlags imageLoadFlags, const Parameters& params,
+                           PluginTraverseMode traverseMode, ImageSharedPtr& out_image)
         {
-
             using namespace LLUtils;
-                    FileMapping fileMapping(filePath);
-                    const void* buffer = fileMapping.GetBuffer();
-                    std::size_t size = fileMapping.GetSize();
-                    string_type extension = StringUtility::GetFileExtension<string_type>(filePath);
-            
-                    ImageResult result = ImageResult::UnknownError;
-                    if (buffer != nullptr && size != 0)
-                    {
-                        return this->Decode(static_cast<const std::byte*>(buffer), size,imageLoadFlags,params, extension, traverseMode,out_image);
-                    }
-                    else
-                    {
-                        result = ImageResult::BadParameters;
-                    }
-            
-                    return result;
+            FileMapping fileMapping(filePath);
+            const void* buffer     = fileMapping.GetBuffer();
+            const std::size_t size = fileMapping.GetSize();
+            ImageResult result     = ImageResult::BadParameters;
+            if (buffer != nullptr && size != 0)
+            {
+                // Convert explicitly to native path text so char still means UTF-8
+                // in narrow Windows builds.
+                const std::filesystem::path path(
+                    StringUtility::ConvertString<std::filesystem::path::string_type>(filePath));
+                string_type extension = StringUtility::ConvertString<string_type>(path.extension().native());
+                if (!extension.empty())
+                    extension.erase(0, 1);
+                result = this->Decode(static_cast<const std::byte*>(buffer), size, imageLoadFlags, params, extension,
+                                      traverseMode, out_image);
+            }
+            return result;
         }
-
 
      ImageResult Encode(const ImageSharedPtr image, const string_type& extension, LLUtils::Buffer& encoded)
     {
