@@ -1,3 +1,4 @@
+#include <LLUtils/Thread.h>
 #include <ImageUtil/TexelConvertor.h>
 #include <ImageUtil/System.h>
 #include <algorithm>
@@ -55,7 +56,8 @@ namespace IMUtil
                     const size_t texelsPerThread = totalTexels / totalThreads;
                     for (uint8_t threadNum = 0; threadNum < totalThreads; threadNum++)
                     {
-                        threads[threadNum] = std::thread([&, threadNum]()
+                        threads[threadNum] = LLUtils::StartThread(
+                            [&, threadNum]()
                             {
                                 const size_t baseTexel = threadNum * texelsPerThread;
                                 const std::byte* sourceAddress = reinterpret_cast<const std::byte*>
@@ -65,8 +67,7 @@ namespace IMUtil
                                     (reinterpret_cast<uint8_t*>(destBuffer) + (DestTexellSize * baseTexel));
 
                                 ConvertSegment(targetAddress, sourceAddress, texelsPerThread, static_cast<uint8_t>(sourceTexelSize), static_cast<uint8_t>(DestTexellSize), swizzleFunc);
-                            }
-                        );
+                            });
                     }
 
 

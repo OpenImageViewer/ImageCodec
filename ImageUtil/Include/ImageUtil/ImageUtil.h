@@ -1,5 +1,6 @@
 #pragma once
 
+#include <LLUtils/Thread.h>
 #include <unordered_map>
 #include <map>
 #include <algorithm>
@@ -104,17 +105,14 @@ namespace IMUtil
                     size_t rowsPerThread = image->GetHeight() / totalThreads;
                     for (uint8_t threadNum = 0; threadNum < totalThreads; threadNum++)
                     {
-
-                        threads[threadNum] = std::thread
-                        (
+                        threads[threadNum] = LLUtils::StartThread(
                             [&descTemplate, rowsPerThread, threadNum]()
                             {
                                 PixelUtil::TransformTexelsInfo desc = descTemplate;
                                 desc.startRow = rowsPerThread * threadNum;
                                 desc.endRow = rowsPerThread * (threadNum + 1);
                                 PixelUtil::TransformTexels(desc);
-                            }
-                        );
+                            });
                     }
 
                     PixelUtil::TransformTexelsInfo desc = descTemplate;

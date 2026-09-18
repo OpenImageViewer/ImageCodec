@@ -1,4 +1,5 @@
 #pragma once
+#include <LLUtils/Thread.h>
 #include <cstdint>
 #include <thread>
 #include <algorithm>
@@ -79,16 +80,13 @@ LLUTILS_DISABLE_WARNING_POP
 
                 for (uint8_t threadNum = 0; threadNum < totalThreads; threadNum++)
                 {
-                    threads[threadNum] = std::thread
-                    (
+                    threads[threadNum] = LLUtils::StartThread(
                         [convertFunc, threadNum, i_src, dest, segmentSize]()
-                    {
-
-                        const size_t start = threadNum * segmentSize;
-                        const size_t end = start + segmentSize;
-                        convertFunc(dest, i_src, start, end);
-                    }
-                    );
+                        {
+                            const size_t start = threadNum * segmentSize;
+                            const size_t end   = start + segmentSize;
+                            convertFunc(dest, i_src, start, end);
+                        });
                 }
 
                 const size_t start = (totalThreads)* segmentSize;
