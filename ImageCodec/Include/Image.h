@@ -2,6 +2,7 @@
 #include "ImageDescriptor.h"
 #include "ImageItem.h"
 #include <LLUtils/Point.h>
+#include <utility>
 
 namespace IMCodec
 {
@@ -56,8 +57,8 @@ namespace IMCodec
             if (imageItem->descriptor.texelFormatStorage == TexelFormat::UNKNOWN)
                 imageItem->descriptor.texelFormatStorage = imageItem->descriptor.texelFormatDecompressed;
         }
-        const std::byte* GetBufferAt(int32_t x, int32_t y) const { return fImageItem->data.data()+ (y * GetRowPitchInBytes() + x * GetBitsPerTexel() / ImageDesc::NumBitsInOneByte); }
-        const std::byte* GetBuffer() const { return fImageItem->data.data(); }
+        const std::byte* GetBufferAt(int32_t x, int32_t y) const { return std::as_const(fImageItem->data).data()+ (y * GetRowPitchInBytes() + x * GetBitsPerTexel() / ImageDesc::NumBitsInOneByte); }
+        const std::byte* GetBuffer() const { return std::as_const(fImageItem->data).data(); }
         uint32_t GetNumSubImages() const { return static_cast<uint32_t>(fSubImages.size()); }
 
         const ImageDescriptor& GetDescriptor() { return fImageItem->descriptor; }

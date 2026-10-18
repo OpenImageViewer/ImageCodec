@@ -243,7 +243,7 @@ namespace IMCodec
                 auto extractExtraSampleImages = [&]()
                 {
                     return ExtactExtraSamples(width, height, rowPitch, samplesPerPixel, extraSamples, planarConfig
-                        , bytesPerSample, imageItem->data, photoMetric, bitsPerSample, sampleFormat);
+                        , bytesPerSample, imageItem->data.MutableBuffer(), photoMetric, bitsPerSample, sampleFormat);
                 };
 
                 if (planarConfig == PLANARCONFIG_CONTIG && extraSamples > 0)

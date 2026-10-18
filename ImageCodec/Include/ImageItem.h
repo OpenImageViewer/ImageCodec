@@ -3,7 +3,7 @@
 #include <memory>
 #include <optional>
 #include "ImageDescriptor.h"
-#include <LLUtils/Buffer.h>
+#include "ImageBuffer.h"
 #include <limits>
 #include "ImageCommon.h"
 
@@ -128,7 +128,7 @@ namespace IMCodec
         /// <summary>
         /// The raw image data
         /// </summary>
-        LLUtils::Buffer data{};
+        ImageBuffer data{};
         /// <summary>
         /// THe type of the item
         /// </summary>

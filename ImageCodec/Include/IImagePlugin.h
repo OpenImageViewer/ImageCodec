@@ -13,16 +13,16 @@ namespace IMCodec
     /// </summary>
     enum class ImageLoadFlags
     {
-          None = 0 << 0
-        , Preview = 1 << 0
-        , LoadOnlyFirstImage = 1 << 1
+        None               = 0 << 0,
+        Preview            = 1 << 0,
+        LoadOnlyFirstImage = 1 << 1
     };
 
     LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(ImageLoadFlags)
 
     class Image;
     using ImageSharedPtr = std::shared_ptr<Image>;
-    
+
     using ListFileExtensions = std::vector<string_type>;
 
     struct ExtensionCollection
@@ -30,19 +30,20 @@ namespace IMCodec
         string_type description;
         ListFileExtensions listExtensions;
     };
-    
+
     using ListxtensionCollection = std::vector<ExtensionCollection>;
 
     enum class CodecCapabilities
     {
-          None          = 0 << 0 
-        , Encode        = 1 << 0    // Can the Codec encode data
-        , Decode        = 1 << 1    // Can the Codec decode data
-        , BulkCodec     = 1 << 2    // Is the codec decodes many types of formats
+        None   = 0 << 0,
+        Encode = 1 << 0  // Can the Codec encode data
+        ,
+        Decode = 1 << 1  // Can the Codec decode data
+        ,
+        BulkCodec = 1 << 2  // Is the codec decodes many types of formats
     };
 
     LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(CodecCapabilities)
-
 
     struct PluginProperties
     {
@@ -52,8 +53,6 @@ namespace IMCodec
         ListxtensionCollection extensionCollection;
     };
 
-
-   
     struct ParameterDescriptor
     {
         string_type name;
@@ -67,24 +66,34 @@ namespace IMCodec
 
     using ListParameterDescriptors = std::vector<ParameterDescriptor>;
 
-
     class IImagePlugin
     {
-    public:
+      public:
+
+        virtual ~IImagePlugin() = default;
+
         /// <summary>
-        /// Decode memory buffer to a bitmap image
+        /// Decode memory into pixels independent of the input lifetime
         /// </summary>
         /// <param name="buffer">memory buffer of the encoded image</param>
         /// <param name="size">size of the memory buffer</param>
         /// <param name="loadFlags"></param>
         /// <param name="out_image">image shared pointer result</param>
         /// <returns>ImageResult::Success on success</returns>
-        virtual ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) = 0;
+        virtual ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags,
+                                   const Parameters& params, ImageSharedPtr& out_image) = 0;
 
-        virtual ImageResult Encode([[maybe_unused]] const ImageSharedPtr& image, [[maybe_unused]] const Parameters& EncodeParametrs
-            , [[maybe_unused]] LLUtils::Buffer& encodedBuffer) { return ImageResult::NotImplemented; }
+        virtual ImageResult Encode([[maybe_unused]] const ImageSharedPtr& image,
+                                   [[maybe_unused]] const Parameters& EncodeParametrs,
+                                   [[maybe_unused]] LLUtils::Buffer& encodedBuffer)
+        {
+            return ImageResult::NotImplemented;
+        }
 
-        virtual ImageResult GetEncoderParameters([[maybe_unused]] ListParameterDescriptors& out_encodeParameters) { return ImageResult::NotImplemented; }
+        virtual ImageResult GetEncoderParameters([[maybe_unused]] ListParameterDescriptors& out_encodeParameters)
+        {
+            return ImageResult::NotImplemented;
+        }
         virtual const PluginProperties& GetPluginProperties() = 0;
     };
-}
+}  // namespace IMCodec

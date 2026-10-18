@@ -4,4 +4,5 @@ project(CodecDDS)
 
 add_subdirectory(../../External/libdds libdds)
 add_library(CodecDDS Source/CodecDDSFactory.cpp Source/CodecDDS.h Include/CodecDDSFactory.h)
-target_link_libraries(CodecDDS PRIVATE libdds::libdds)
+find_package(Threads REQUIRED)
+target_link_libraries(CodecDDS PRIVATE libdds::libdds Threads::Threads)

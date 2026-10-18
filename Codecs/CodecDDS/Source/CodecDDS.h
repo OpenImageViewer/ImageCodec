@@ -18,11 +18,14 @@ namespace IMCodec
     {
       public:
 
-        CodecDDS()
+        explicit CodecDDS(size_t outputPoolCapacity = ImageBufferPool::DefaultCapacity)
             : mPluginProperties({{0x252347b1, 0x91e7, 0x4c5c, {0x8f, 0x6, 0x72, 0x6b, 0xa, 0x52, 0xde, 0x6d}},
                                  CodecCapabilities::Decode,
                                  LLUTILS_TEXT("DirectXTex DDS image codec"),
-                                 {{LLUTILS_TEXT("DDS - DirectDraw Surface Image"), {LLUTILS_TEXT("dds")}}}})
+                                 {{LLUTILS_TEXT("DDS - DirectDraw Surface Image"), {LLUTILS_TEXT("dds")}}}}),
+              mOutputPool(outputPoolCapacity == ImageBufferPool::DefaultCapacity ? ImageBufferPool::Shared()
+                          : outputPoolCapacity ? std::make_shared<ImageBufferPool>(outputPoolCapacity)
+                                               : nullptr)
         {
         }
 
@@ -31,13 +34,13 @@ namespace IMCodec
         ImageResult Decode(const std::byte* buffer, std::size_t size, ImageLoadFlags loadFlags,
                            [[maybe_unused]] const Parameters& params, ImageSharedPtr& out_image) override
         {
-            return DecodeInput(buffer, size, loadFlags, out_image);
+            return DecodeInput(buffer, size, {}, loadFlags, out_image);
         }
 
       private:
 
         ImageResult DecodeInput(const std::byte* buffer, size_t size,
-                                ImageLoadFlags loadFlags,
+                                const std::shared_ptr<const LLUtils::Buffer>& owner, ImageLoadFlags loadFlags,
                                 ImageSharedPtr& out_image)
         {
             if (!buffer || !size)
@@ -51,8 +54,8 @@ namespace IMCodec
                 DirectX::TexMetadata metadata{};
                 std::vector<DirectX::Image> views;
                 DirectX::ScratchImage source;
-                // Borrow validated source views during decoding. Raw-pointer callers
-                // receive independent final pixels before these views are released.
+                // Validated native views may escape only when an immutable input
+                // owner was explicitly supplied. Raw-pointer callers still get copies.
                 HRESULT hr = DirectX::GetDDSImageViewsFromMemory(reinterpret_cast<const uint8_t*>(buffer), size, flags,
                                                                  metadata, views);
                 const bool borrowed = hr == S_OK;
@@ -75,7 +78,7 @@ namespace IMCodec
                             return ImageResult::FormatNotSupported;
 
                         auto item = std::make_shared<ImageItem>();
-                        result    = LoadSurface(*surface, *item);
+                        result    = LoadSurface(*surface, *item, borrowed ? owner : nullptr);
                         if (result == ImageResult::Success)
                         {
                             item->itemType = mip == 0 ? ImageItemType::Image : ImageItemType::Mipmap;
@@ -161,7 +164,8 @@ namespace IMCodec
             }
         }
 
-        ImageResult LoadSurface(const DirectX::Image& surface, ImageItem& item)
+        ImageResult LoadSurface(const DirectX::Image& surface, ImageItem& item,
+                                const std::shared_ptr<const LLUtils::Buffer>& owner)
         {
             // TODO: Remove this temporary CPU fallback once ImageCodec and the renderer support native YUV
             // with explicit colorimetry. DirectXTex assumes limited-range BT.601; RGBA8 also loses source precision.
@@ -193,7 +197,7 @@ namespace IMCodec
                                                                    DirectX::TEX_FILTER_FORCE_NON_WIC,
                                                                    DirectX::TEX_THRESHOLD_DEFAULT, rgba));
                     // Copy into the normal output storage so the image outlives these conversion temporaries.
-                    return result == ImageResult::Success ? LoadSurface(*rgba.GetImage(0, 0, 0), item)
+                    return result == ImageResult::Success ? LoadSurface(*rgba.GetImage(0, 0, 0), item, nullptr)
                                                           : result;
                 }
                 default:
@@ -246,10 +250,14 @@ namespace IMCodec
                 return ImageResult::FormatNotSupported;
 
             ImageResult result = ImageResult::Success;
+            if (!compressed && !convert && owner)
+                item.data.Retain(owner, reinterpret_cast<const std::byte*>(surface.pixels), slicePitch);
+            else
             {
-                item.data.Allocate(slicePitch);
-                if (!item.data.data())
-                    throw std::bad_alloc();
+                // Small allocations already recycle cheaply in the system allocator;
+                // avoid pool locking and shared ownership for the tail mip levels.
+                item.data.Allocate(slicePitch,
+                                   slicePitch >= ImageBufferPool::MinimumPooledBytes ? mOutputPool : nullptr);
                 const DirectX::Image destination{surface.width, surface.height,
                                                  format,        rowPitch,
                                                  slicePitch,    reinterpret_cast<uint8_t*>(item.data.data())};
@@ -270,5 +278,6 @@ namespace IMCodec
         }
 
         PluginProperties mPluginProperties;
+        std::shared_ptr<ImageBufferPool> mOutputPool;
     };
 }  // namespace IMCodec

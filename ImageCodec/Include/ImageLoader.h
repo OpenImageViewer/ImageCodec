@@ -19,36 +19,41 @@ namespace IMCodec
     enum class PluginTraverseMode
     {
         // Try load the file only using the first compatible plugin
-          NoTraverse        = 0 << 0
-        
+        NoTraverse = 0 << 0
+
         // Traverse suitable plugins in reference to the file extension.
-        , SuitablePlugin    = 1 << 0
+        ,
+        SuitablePlugin = 1 << 0
 
         // Traverse all plugins.
-        , AnyPlugin         = 1 << 1
-        
+        ,
+        AnyPlugin = 1 << 1
+
         // Traverse only for known file type
-        , OnlyKnownFileType = 1 << 2
+        ,
+        OnlyKnownFileType = 1 << 2
 
         // Traverse all installed plugin if first attempt to load the file has failed.
-        , AnyFileType       = 1 << 3
+        ,
+        AnyFileType = 1 << 3
     };
 
     LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS(PluginTraverseMode)
-    
-	class ImageLoader
-	{
-    private:
+
+    class ImageLoader
+    {
+      private:
+
         ImageCodec fImageCodec;
         ImageMetaDataLoader fImageMetaDataLoader;
         using ListPluginID = std::vector<PluginID>;
         ListPluginID fListPlugins;
         using MapStringListPlugin = std::map<string_type, ListPluginID>;
         MapStringListPlugin fMapPlugins;
-        
-        
-    public:
-        ImageLoader() 
+
+      public:
+
+        ImageLoader()
         {
             using namespace LLUtils;
             auto pluginsInfo = fImageCodec.GetPluginsInfo();
@@ -61,7 +66,7 @@ namespace IMCodec
                     for (const auto& extension : fileExtensions.listExtensions)
                     {
                         auto extensionLowerCase = StringUtility::ToLower(extension);
-                        auto it = fMapPlugins.find(extensionLowerCase);
+                        auto it                 = fMapPlugins.find(extensionLowerCase);
                         if (it == fMapPlugins.end())
                             it = fMapPlugins.emplace(extensionLowerCase, ListPluginID{}).first;
 
@@ -71,9 +76,8 @@ namespace IMCodec
                     }
                 }
             }
-
         }
-     
+
         PluginID GetFirstPlugin(const string_type& extension) const
         {
             using namespace std;
@@ -82,128 +86,119 @@ namespace IMCodec
             if (it != fMapPlugins.end())
             {
                 const ListPluginID& pluginsList = it->second;
-                result = *pluginsList.begin();
+                result                          = *pluginsList.begin();
             }
 
             return result;
         }
 
-        ImageCodec& GetImageCodec()
-        {
-            return fImageCodec;
-        }
+        ImageCodec& GetImageCodec() { return fImageCodec; }
 
-
-        ImageResult Decode(const std::byte* buffer
-            , std::size_t size
-            , ImageLoadFlags imageLoadFlags
-            , const Parameters& params
-            , const string_type& extension
-            , PluginTraverseMode traverseMode
-            , ImageSharedPtr& out_image)
+        ImageResult Decode(const std::byte* buffer, std::size_t size, ImageLoadFlags imageLoadFlags,
+                           const Parameters& params, const string_type& extension, PluginTraverseMode traverseMode,
+                           ImageSharedPtr& out_image)
         {
-            ImageResult result = ImageResult:: UnknownError;
+            ImageResult result = ImageResult::UnknownError;
             PluginID choosenPlugin{};
 
+            if (extension.empty() == false)
+                choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower<string_type>(extension));
 
-             if (extension.empty() == false)
-                  choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower<string_type>(extension));
+            if (choosenPlugin != PluginID())
+                result = fImageCodec.Decode(buffer, size, choosenPlugin, imageLoadFlags, params, out_image);
 
-             if (choosenPlugin != PluginID())
-                    result = fImageCodec.Decode(buffer, size, choosenPlugin, imageLoadFlags, params, out_image);
+            const bool isKnownFileType = choosenPlugin != PluginID{};
 
-             const bool isKnownFileType = choosenPlugin != PluginID{};
+            const bool shouldTraversPlugins = result != ImageResult::Success  // 1. File hasn't been loaded
+                                              &&
+                                              ((traverseMode & PluginTraverseMode::AnyFileType) ==
+                                                   PluginTraverseMode::AnyFileType  // 2. Allow non registered extension
+                                               || (isKnownFileType &&
+                                                   (traverseMode & PluginTraverseMode::OnlyKnownFileType) ==
+                                                       PluginTraverseMode::OnlyKnownFileType));
 
-             const bool shouldTraversPlugins = result != ImageResult::Success // 1. File hasn't been loaded
-                 && ( (traverseMode & PluginTraverseMode::AnyFileType) == PluginTraverseMode::AnyFileType// 2. Allow non registered extension
-                  ||  (isKnownFileType && (traverseMode & PluginTraverseMode::OnlyKnownFileType) == PluginTraverseMode::OnlyKnownFileType));
-                 
-             //const bool shouldTraveseOnlySuitable = (traverseMode & PluginTraverseMode::SuitablePlugin) == PluginTraverseMode::SuitablePlugin;
+            // const bool shouldTraveseOnlySuitable = (traverseMode & PluginTraverseMode::SuitablePlugin) ==
+            // PluginTraverseMode::SuitablePlugin;
 
-                // If image not loaded and allow to load using unregistred file extensions, iterate over all image plugins.
-                if (shouldTraversPlugins)
+            // If image not loaded and allow to load using unregistred file extensions, iterate over all image plugins.
+            if (shouldTraversPlugins)
+            {
+                for (auto plugin : fListPlugins)
                 {
-                    for (auto plugin : fListPlugins)
+                    // In case we try to a choosen plugin and it failed. don't try again.
+                    if (plugin != choosenPlugin)
                     {
-                        // In case we try to a choosen plugin and it failed. don't try again.
-                        if (plugin != choosenPlugin)
-                        {
-                            result = fImageCodec.Decode(buffer, size, plugin, imageLoadFlags, params, out_image);
-                            if (result == ImageResult::Success)
-                                break;
-                        }
+                        result = fImageCodec.Decode(buffer, size, plugin, imageLoadFlags, params, out_image);
+                        if (result == ImageResult::Success)
+                            break;
                     }
                 }
+            }
 
-                return result;
+            return result;
         }
 
         ImageResult Decode(const string_type& filePath, ImageLoadFlags imageLoadFlags, const Parameters& params,
                            PluginTraverseMode traverseMode, ImageSharedPtr& out_image)
         {
             using namespace LLUtils;
+            const std::filesystem::path path(
+                StringUtility::ConvertString<std::filesystem::path::string_type>(filePath));
+            string_type extension = StringUtility::ConvertString<string_type>(path.extension().native());
+            if (!extension.empty())
+                extension.erase(0, 1);
             FileMapping fileMapping(filePath);
-            const void* buffer     = fileMapping.GetBuffer();
-            const std::size_t size = fileMapping.GetSize();
-            ImageResult result     = ImageResult::BadParameters;
-            if (buffer != nullptr && size != 0)
-            {
-                // Convert explicitly to native path text so char still means UTF-8
-                // in narrow Windows builds.
-                const std::filesystem::path path(
-                    StringUtility::ConvertString<std::filesystem::path::string_type>(filePath));
-                string_type extension = StringUtility::ConvertString<string_type>(path.extension().native());
-                if (!extension.empty())
-                    extension.erase(0, 1);
-                result = this->Decode(static_cast<const std::byte*>(buffer), size, imageLoadFlags, params, extension,
-                                      traverseMode, out_image);
-            }
+            const auto* buffer = static_cast<const std::byte*>(fileMapping.GetBuffer());
+            const auto size    = fileMapping.GetSize();
+            const auto result  = buffer && size
+                                     ? Decode(buffer, size, imageLoadFlags, params, extension, traverseMode, out_image)
+                                     : ImageResult::BadParameters;
             return result;
         }
 
-     ImageResult Encode(const ImageSharedPtr image, const string_type& extension, LLUtils::Buffer& encoded)
-    {
-        auto choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower(extension));
-
-        if (choosenPlugin != PluginID{})
+        ImageResult Encode(const ImageSharedPtr image, const string_type& extension, LLUtils::Buffer& encoded)
         {
-            Parameters encoderParameters;
+            auto choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower(extension));
 
-            ListParameterDescriptors parametersDescriptors;
-            
-            return fImageCodec.Encode(image,choosenPlugin, encoderParameters, encoded);
+            if (choosenPlugin != PluginID{})
+            {
+                Parameters encoderParameters;
+
+                ListParameterDescriptors parametersDescriptors;
+
+                return fImageCodec.Encode(image, choosenPlugin, encoderParameters, encoded);
+            }
+            return ImageResult::NotImplemented;
         }
-        return ImageResult::NotImplemented;
-    }
 
+        ImageResult Encode(const ImageSharedPtr image, const string_type& filePath)
+        {
+            string_type extension = LLUtils::StringUtility::ToLower(
+                std::filesystem::path(filePath).extension().string<char_type>());
+            std::basic_string_view<char_type> sv(extension);
 
-     ImageResult Encode(const ImageSharedPtr image, const string_type& filePath)
-     {
-         string_type extension = LLUtils::StringUtility::ToLower(std::filesystem::path(filePath).extension().string<char_type>());
-         std::basic_string_view<char_type> sv(extension);
+            if (sv.empty() == false)
+                sv = sv.substr(1);
 
-         if (sv.empty() == false)
-             sv = sv.substr(1);
+            LLUtils::Buffer encodedBuffer;
+            ImageResult result = Encode(image, sv.data(), encodedBuffer);
+            if (result == ImageResult::Success)
+                LLUtils::File::WriteAllBytes(filePath, encodedBuffer.size(), encodedBuffer.data());
 
-         LLUtils::Buffer encodedBuffer;
-         ImageResult result = Encode(image, sv.data(), encodedBuffer);
-         if (result == ImageResult::Success)
-             LLUtils::File::WriteAllBytes(filePath, encodedBuffer.size(), encodedBuffer.data());
+            return result;
+        }
 
-         return result;
-     }
-
-     ImageResult LoadMetaData(const std::byte* buffer, size_t size, ItemMetaDataSharedPtr& out_metaData)
-     {
-          return fImageMetaDataLoader.LoadMetaData(buffer, size, out_metaData);
-     }
-     ImageResult LoadMetaData(LLUtils::native_string_type filePath, ItemMetaDataSharedPtr& out_metaData)
-     {
-         using namespace LLUtils;
-         FileMapping fileMapping(filePath);
-         const void* buffer = fileMapping.GetBuffer();
-         size_t size = fileMapping.GetSize();
-         return LoadMetaData(static_cast<const std::byte*>(buffer), size, out_metaData);
-     }
-	};
-}
+        ImageResult LoadMetaData(const std::byte* buffer, size_t size, ItemMetaDataSharedPtr& out_metaData)
+        {
+            return fImageMetaDataLoader.LoadMetaData(buffer, size, out_metaData);
+        }
+        ImageResult LoadMetaData(LLUtils::native_string_type filePath, ItemMetaDataSharedPtr& out_metaData)
+        {
+            using namespace LLUtils;
+            FileMapping fileMapping(filePath);
+            const void* buffer = fileMapping.GetBuffer();
+            size_t size        = fileMapping.GetSize();
+            return LoadMetaData(static_cast<const std::byte*>(buffer), size, out_metaData);
+        }
+    };
+}  // namespace IMCodec
