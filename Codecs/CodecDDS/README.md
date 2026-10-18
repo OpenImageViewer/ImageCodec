@@ -42,7 +42,7 @@ Legacy BGRX, B5G5R5A1, and B4G4R4A4 conversion writes directly into final storag
 using libdds's caller-owned Convert overload. Legacy 24-bit layout expansion uses
 the owning DDS loader before final image storage.
 
-See [Benchmarks/README.md](Benchmarks/README.md) for the storage pool probe.
+See [Benchmarks/README.md](Benchmarks/README.md) for the full-mip matrix.
 
 Large BC surfaces (approximately four million pixels or more) can use up to three
 async helpers alongside the calling thread. Work is split at complete BC block-row
