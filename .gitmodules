@@ -37,3 +37,6 @@
 [submodule "External/FreeImageRe"]
 	path = External/FreeImageRe
 	url = https://github.com/agruzdev/FreeImageRe.git
+[submodule "External/libdds"]
+	path = External/libdds
+	url = https://github.com/OpenImageViewer/libdds.git

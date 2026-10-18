@@ -1,14 +1,7 @@
-#Codec DDS
-cmake_minimum_required(VERSION 3.10)
-
+# Codec DDS
+cmake_minimum_required(VERSION 3.20)
 project(CodecDDS)
 
-file(GLOB_RECURSE sourceFiles
-    "./Source/*.h"
-    "./Source/*.cpp"
-)
-
-set(TargetName CodecDDS)
-add_library (${TargetName} ${sourceFiles} )
-
-add_compile_definitions(NV_DDS_NO_GL_SUPPORT)
+add_subdirectory(../../External/libdds libdds)
+add_library(CodecDDS Source/CodecDDSFactory.cpp Source/CodecDDS.h Include/CodecDDSFactory.h)
+target_link_libraries(CodecDDS PRIVATE libdds::libdds)
