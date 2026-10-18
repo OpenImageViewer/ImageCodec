@@ -2,6 +2,7 @@
 #include <ImageUtil/TexelConvertor.h>
 #include <ExoticNumbers/Float24.h>
 #include <ExoticNumbers/half.hpp>
+#include <algorithm>
 
 namespace IMUtil
 {
@@ -37,7 +38,18 @@ namespace IMUtil
         if (sourceImage->GetTexelFormat() != targetPixelFormat)
         {
             ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
-            imageItem->descriptor = sourceImage->GetDescriptor();
+            imageItem->descriptor        = sourceImage->GetDescriptor();
+            // Convert only repacks or scales channels. Intensity normalization
+            // creates its own image and must not inherit this source encoding.
+            imageItem->colorInfo = sourceImage->GetImageItem()->colorInfo;
+            const auto hasAlpha  = [](const TexelInfo& format)
+            {
+                return std::ranges::any_of(std::span(format.channles).first(format.numChannles),
+                                           [](const ChannelInfo& channel)
+                                           { return channel.semantic == ChannelSemantic::Opacity; });
+            };
+            if (!hasAlpha(GetTexelInfo(targetPixelFormat)) || !hasAlpha(sourceImage->GetTexelInfo()))
+                imageItem->colorInfo.alphaMode = ImageItem::ColorInfo::AlphaMode::Opaque;
 
             uint8_t targetPixelSizeInBits = GetTexelFormatSize(targetPixelFormat);
             imageItem->data.Allocate(sourceImage->GetTotalPixels() * targetPixelSizeInBits / CHAR_BIT);
@@ -78,7 +90,6 @@ namespace IMUtil
 
             if (succcess == true)
                 convertedImage = std::make_shared<Image>(imageItem, sourceImage->GetSubImageGroupType());
-
         }
         else
         { // No need to convert, return source image.

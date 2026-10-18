@@ -1,343 +1,518 @@
 #pragma once
 
+#include <IImagePlugin.h>
 #include <Image.h>
 #include <png.h>
 
-#include <LLUtils/BitFlags.h>
+#include <cstdint>
+#include <bit>
+#include <csetjmp>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <limits>
+#include <new>
+#include <span>
+#include <vector>
 
-typedef struct png_control
-{
-    png_structp png_ptr;
-    png_infop   info_ptr;
-    png_voidp   error_buf;           /* Always a jmp_buf at present. */
-
-    png_const_bytep memory;          /* Memory buffer. */
-    size_t          size;            /* Size of the memory buffer. */
-
-    unsigned int for_write : 1; /* Otherwise it is a read structure */
-    unsigned int owned_file : 1; /* We own the file in io_ptr */
-} png_control;
+#ifndef PNG_READ_APNG_SUPPORTED
+    #error CodecPNG requires libpng APNG read support
+#endif
 
 namespace IMCodec
 {
     class CodecPNG : public IImagePlugin
     {
-    private:
-        static constexpr int PNG_COLOR_TYPE_UNKNOWN = -1;
-        enum class PngFormatFlags : png_uint_32
-        {
-              None = 0 << 0
-            , Alpha = 1 << 0
-            , Color = 1 << 1
-            , Linear = 1 << 2
-            , ColorMap = 1 << 3
-            , Reserved5 = 1 << 4
-            , Reserved6 = 1 << 5
-            , Reserved7 = 1 << 6
-            , Reserved8 = 1 << 7
-            , Reserved9 = 1 << 8
+      private:
 
+        // Own resources outside Call's jump boundary. Its operations contain only
+        // libpng calls and trivial locals, so errors never skip C++ destructors.
+        struct PngSession
+        {
+            png_struct* png = nullptr;
+            png_info* info  = nullptr;
+            bool writing;
+            bool allocationFailed = false;
+            std::span<const std::byte> input;
+            size_t position = 0;
+            std::vector<std::byte> output;
+
+            explicit PngSession(bool write) : writing(write)
+            {
+                png = writing
+                          ? png_create_write_struct_2(PNG_LIBPNG_VER_STRING, this, Error, Warning, this, Allocate, Free)
+                          : png_create_read_struct_2(PNG_LIBPNG_VER_STRING, this, Error, Warning, this, Allocate, Free);
+                if (png)
+                    info = png_create_info_struct(png);
+            }
+            PngSession(const PngSession&)            = delete;
+            PngSession& operator=(const PngSession&) = delete;
+            ~PngSession()
+            {
+                if (writing)
+                    png_destroy_write_struct(&png, &info);
+                else
+                    png_destroy_read_struct(&png, &info, nullptr);
+            }
+
+            template <class Operation>
+            bool Call(Operation operation)
+            {
+                if (setjmp(png_jmpbuf(png)))
+                    return false;
+                operation();
+                return true;
+            }
+            bool ReadRows(std::byte* pixels, size_t pitch, uint32_t height)
+            {
+                return Call(
+                    [&]
+                    {
+                        const int passes = png_set_interlace_handling(png);
+                        for (int pass = 0; pass < passes; ++pass)
+                            for (size_t y = 0; y < height; ++y)
+                                png_read_row(png, pixels ? reinterpret_cast<png_byte*>(pixels + y * pitch) : nullptr,
+                                             nullptr);
+                    });
+            }
+            ImageResult Failure() const
+            {
+                return allocationFailed ? ImageResult::UnknownError : ImageResult::FileIsCorrupted;
+            }
+            static void* Allocate(png_struct* png, png_alloc_size_t size)
+            {
+                auto* memory = std::malloc(size);
+                if (!memory)
+                    static_cast<PngSession*>(png_get_mem_ptr(png))->allocationFailed = true;
+                return memory;
+            }
+            static void Free(png_struct*, void* memory) { std::free(memory); }
+            [[noreturn]] static void Error(png_struct* png, const char*) { png_longjmp(png, 1); }
+            static void Warning(png_struct*, const char*) {}
+            static void Read(png_struct* png, png_byte* bytes, size_t count)
+            {
+                auto& state = *static_cast<PngSession*>(png_get_io_ptr(png));
+                if (count > state.input.size() - state.position)
+                    png_error(png, "Truncated PNG input");
+                std::memcpy(bytes, state.input.data() + state.position, count);
+                state.position += count;
+            }
+            static void Write(png_struct* png, png_byte* bytes, size_t count)
+            {
+                auto& state = *static_cast<PngSession*>(png_get_io_ptr(png));
+                bool failed = false;
+                try
+                {
+                    const auto* first = reinterpret_cast<const std::byte*>(bytes);
+                    state.output.insert(state.output.end(), first, first + count);
+                }
+                catch (...)
+                {
+                    state.allocationFailed = true;
+                    failed                 = true;
+                }
+                // Jump only after leaving the exception handler.
+                if (failed)
+                    png_error(png, "PNG output allocation failed");
+            }
         };
 
-        LLUTILS_DEFINE_ENUM_CLASS_FLAG_OPERATIONS_IN_CLASS(PngFormatFlags)
-
-
-    public:
-
-        const PluginProperties& GetPluginProperties() override
+        struct Frame
         {
-            static PluginProperties pluginProperties =
+            png_uint_32 width = 0, height = 0, x = 0, y = 0;
+            png_uint_16 numerator = 0, denominator = 100;
+            png_byte dispose = PNG_fcTL_DISPOSE_OP_NONE, blend = PNG_fcTL_BLEND_OP_SOURCE;
+        };
+
+        // APNG OVER is evaluated at the source depth with straight alpha. SOURCE
+        // takes the direct row path and preserves even RGB under zero alpha.
+        template <class Channel>
+        static void Blend(std::byte* destination, const std::byte* source, size_t pixels)
+        {
+            constexpr uint64_t maximum = std::numeric_limits<Channel>::max();
+            for (size_t i = 0; i < pixels; ++i)
             {
-                // {22A82F61-4C92-432E-93EB-635E24545306}
-
-                { 0x22a82f61, 0x4c92, 0x432e, { 0x93, 0xeb, 0x63, 0x5e, 0x24, 0x54, 0x53, 0x6 } }
-
-                , CodecCapabilities::Decode | CodecCapabilities::Encode
-                , LLUTILS_TEXT("PNG Codec")
-                ,
+                Channel sourceChannels[4], destinationChannels[4];
+                std::memcpy(sourceChannels, source + i * sizeof(sourceChannels), sizeof(sourceChannels));
+                std::memcpy(destinationChannels, destination + i * sizeof(destinationChannels),
+                            sizeof(destinationChannels));
+                const uint64_t sourceAlpha = sourceChannels[3];
+                if (sourceAlpha == maximum)
+                    std::memcpy(destination + i * sizeof(sourceChannels), sourceChannels, sizeof(sourceChannels));
+                else if (sourceAlpha != 0)
                 {
-                    {
-                        { LLUTILS_TEXT("Portable Network Graphics")}
-                       ,{ LLUTILS_TEXT("png")}
-                    }
+                    const auto destinationWeight = uint64_t{destinationChannels[3]} * (maximum - sourceAlpha);
+                    // Keep coverage scaled until the final division to avoid losing
+                    // precision when converting the composed color back to straight alpha.
+                    const auto combinedAlphaNumerator = sourceAlpha * maximum + destinationWeight;
+                    for (size_t c = 0; c < 3; ++c)
+                        destinationChannels[c] = static_cast<Channel>(
+                            (uint64_t{sourceChannels[c]} * sourceAlpha * maximum +
+                             uint64_t{destinationChannels[c]} * destinationWeight + combinedAlphaNumerator / 2) /
+                            combinedAlphaNumerator);
+                    destinationChannels[3] = static_cast<Channel>((combinedAlphaNumerator + maximum / 2) / maximum);
+                    std::memcpy(destination + i * sizeof(destinationChannels), destinationChannels,
+                                sizeof(destinationChannels));
                 }
-            };
-            return pluginProperties;
-        }
-
-        int readStatuscallback(png_structp pngstruct, png_uint_32 status)
-        {
-            return 0;
-        }
-
-        void pngError(png_const_structrp png_ptr,
-            png_const_charp error_message)
-        {
-
-        }
-
-        TexelFormat ResolveTexelFormat(png_uint_32 pngFormat, unsigned int channelSize)
-        {
-            TexelFormat textFormat = TexelFormat::UNKNOWN;
-            const bool isSingleChannel = channelSize == 1;
-            switch (pngFormat)
-            {
-            case PNG_FORMAT_GRAY | PNG_FORMAT_FLAG_LINEAR:
-            case PNG_FORMAT_GRAY:
-                textFormat = isSingleChannel ? TexelFormat::I_X8 : TexelFormat::I_X16;
-                break;
-            case PNG_FORMAT_RGBA | PNG_FORMAT_FLAG_LINEAR:
-            case PNG_FORMAT_RGBA:
-                textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8_A8 : TexelFormat::I_R16_G16_B16_A16;
-                break;
-            case PNG_FORMAT_RGB:
-            case PNG_FORMAT_RGB | PNG_FORMAT_FLAG_LINEAR:
-                textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8 : TexelFormat::I_R16_G16_B16;
-                break;
-            case PNG_FORMAT_FLAG_ALPHA | PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP | PNG_FORMAT_FLAG_LINEAR:
-            case PNG_FORMAT_FLAG_ALPHA | PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP:
-                textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8_A8 : TexelFormat::I_R16_G16_B16_A16;
-                break;
-            case  PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP | PNG_FORMAT_FLAG_LINEAR:
-            case  PNG_FORMAT_FLAG_COLOR | PNG_FORMAT_FLAG_COLORMAP:
-                textFormat = isSingleChannel ? TexelFormat::I_R8_G8_B8 : TexelFormat::I_R16_G16_B16;
-                break;
-            default:
-                LL_EXCEPTION_NOT_IMPLEMENT("Png image format not supported");
-            }
-
-            return textFormat;
-        }
-
-        void ExtractColorMap(LLUtils::Buffer& dest, const LLUtils::Buffer& mappedBuffer, const LLUtils::Buffer& colorMap, uint32_t targetPixelSize
-            , uint32_t width, uint32_t height)
-        {
-            for (size_t pixelIndex = 0; pixelIndex < width * height; pixelIndex++)
-            {
-                const size_t colorIndex = ((uint8_t*)(mappedBuffer.data()))[pixelIndex];
-                const size_t sourcePos = colorIndex * targetPixelSize;
-                const size_t destPos = pixelIndex * targetPixelSize;
-
-                memcpy(reinterpret_cast<uint8_t*>(dest.data()) + destPos
-                    , reinterpret_cast<const uint8_t*>(colorMap.data()) + sourcePos, targetPixelSize);
             }
         }
 
-        //Base abstract methods
-        ImageResult Decode(const std::byte* buffer, std::size_t size, [[maybe_unused]] ImageLoadFlags loadFlags, const Parameters& params, ImageSharedPtr& out_image) override
+        using ColorInfo = ImageItem::ColorInfo;
+
+        static ImageSharedPtr CreateImage(const ImageDescriptor& descriptor, const ColorInfo& colorInfo)
         {
-            using namespace std;
-            ImageResult result = ImageResult::UnknownError;
-            png_image image{};
-            /* Initialize the 'png_image' structure. */
-            image.version = PNG_IMAGE_VERSION;
+            auto item        = std::make_shared<ImageItem>();
+            item->itemType   = ImageItemType::Image;
+            item->descriptor = descriptor;
+            item->colorInfo  = colorInfo;
+            item->data.Allocate(size_t{descriptor.rowPitchInBytes} * descriptor.height);
+            return std::make_shared<Image>(item, ImageItemType::Unknown);
+        }
 
-            if (png_image_begin_read_from_memory(&image, buffer, size) != 0)
+        static ColorInfo ReadColorInfo(PngSession& state, bool alpha)
+        {
+            ColorInfo result;
+            result.alphaMode      = alpha ? ColorInfo::AlphaMode::Straight : ColorInfo::AlphaMode::Opaque;
+            png_fixed_point gamma = 0;
+            if (png_get_gAMA_fixed(state.png, state.info, &gamma))
             {
-                //The size of the image buffer.
-                //const auto version = image.version;
-                const auto sourceImageSize = PNG_IMAGE_SIZE(image);
-                const auto sizeofChannel = static_cast<unsigned int>(PNG_IMAGE_PIXEL_COMPONENT_SIZE(image.format));
-                const auto sourceRowPitchInComponents = PNG_IMAGE_ROW_STRIDE(image);
-                const auto sourceRowPitchInBytes = sourceRowPitchInComponents * sizeofChannel;
-                const auto canvaswidth = image.width;
-                const auto canvasheight = image.height;
-
-                //Number of channels of the target image.
-                auto numChannles = PNG_IMAGE_SAMPLE_CHANNELS(image.format);
-                //Number of channels as found on disk, for color mapped image the value is 1
-                auto numSourceChannels = PNG_IMAGE_PIXEL_CHANNELS(image.format);
-                auto targetPixelSize = sizeofChannel * numChannles;
-                auto sourcePixelSize = sizeofChannel * numSourceChannels;
-                LLUtils::BitFlags<PngFormatFlags> formatFlags(static_cast<PngFormatFlags>(image.format));
-                bool isColorMapped = formatFlags.test(PngFormatFlags::ColorMap);
-                TexelFormat texelFormat = ResolveTexelFormat(image.format, sizeofChannel);
-
-                auto targetRowPitchInBytes = isColorMapped ? targetPixelSize * sourceRowPitchInBytes : sourceRowPitchInBytes; // might change if it's a color mapped png.
-                auto targetImageSize = isColorMapped ? targetRowPitchInBytes * canvasheight : sourceImageSize;
-
-                png_controlp control = image.opaque;
-                png_structrp png_ptr = control->png_ptr;
-                png_inforp info_ptr = control->info_ptr;
-                png_uint_32 numFrames{};
-                png_uint_32 numPlays{};
-
-                png_get_acTL(png_ptr, info_ptr, &numFrames, &numPlays);
-
-                if (numFrames > 1)
-                {
-                    png_uint_32 framewidth{};
-                    png_uint_32 frameheight{};
-                    png_uint_32 frametop{};
-                    png_uint_32 frameleft{};
-                    png_uint_16 delaynom{};
-                    png_uint_16 delaydenom{};
-                    png_byte disposeOp{};
-                    png_byte blendOp{};
-
-                    png_byte colorType = png_get_color_type(png_ptr, info_ptr);
-
-                    if (colorType == PNG_COLOR_TYPE_RGB)
-                    {
-                        numSourceChannels = 3;
-                        sourcePixelSize = sizeofChannel * numSourceChannels;
-                        targetPixelSize = sourcePixelSize;
-                        texelFormat = TexelFormat::I_R8_G8_B8;
-                        targetRowPitchInBytes = targetPixelSize * canvaswidth;
-                    }
-
-                    png_get_acTL(png_ptr, info_ptr, &numFrames, &numPlays);
-
-                    std::vector<LLUtils::Buffer> frameBuffers(numFrames);
-                    auto imageItem = std::make_shared<ImageItem>();
-                    imageItem->itemType = ImageItemType::Container;
-                    out_image = std::make_shared<Image>(imageItem, ImageItemType::AnimationFrame);
-                    out_image->SetNumSubImages(numFrames);
-
-
-
-                    for (auto frameIndex = 0u; frameIndex < numFrames; frameIndex++)
-                    {
-                        auto& currentFrameBuffer = frameBuffers.at(frameIndex);
-                        currentFrameBuffer.Allocate(canvasheight * targetRowPitchInBytes);
-                        memset(currentFrameBuffer.data(), 0, currentFrameBuffer.size());
-
-                        png_read_frame_head(png_ptr, info_ptr);
-
-                        if (png_get_valid(png_ptr, info_ptr, PNG_INFO_fcTL))
-                        {
-                            [[maybe_unused]] auto res = png_get_next_frame_fcTL(png_ptr, info_ptr, &framewidth, &frameheight, &frameleft, &frametop, &delaynom, &delaydenom, &disposeOp, &blendOp);
-
-
-                            LLUtils::Buffer readBuffer(sourceRowPitchInBytes);
-                            png_bytep row_buf = (png_bytep)readBuffer.data();
-                            for (auto y = 0u; y < frameheight; y++)
-                            {
-                                const size_t rowBytes = framewidth * targetPixelSize;
-                                png_read_rows(png_ptr, (png_bytepp)&row_buf, nullptr, 1);
-
-                                auto lineOffset = (y + frametop) * targetRowPitchInBytes + frameleft * targetPixelSize;
-                                currentFrameBuffer.Write(reinterpret_cast<const std::byte*>(row_buf), lineOffset, rowBytes);
-                            }
-                        }
-
-
-                        auto frameImageItem = std::make_shared<ImageItem>();
-                        frameImageItem->itemType = ImageItemType::Image;
-                        frameImageItem->descriptor.rowPitchInBytes = targetRowPitchInBytes;
-                        frameImageItem->descriptor.width = canvaswidth;
-                        frameImageItem->descriptor.height = canvasheight;
-                        frameImageItem->descriptor.texelFormatDecompressed = texelFormat;
-                        frameImageItem->data = std::move(currentFrameBuffer);
-                        frameImageItem->animationData.delayMilliseconds = delaynom * 1000 / delaydenom;
-                        out_image->SetSubImage(frameIndex, std::make_shared<Image>(frameImageItem, ImageItemType::Unknown));
-
-                    }
-                    result = ImageResult::Success;
-                }
-                else
-                {
-                    auto imageItem = std::make_shared<ImageItem>();
-                    imageItem->itemType = ImageItemType::Image;
-
-                    imageItem->descriptor.rowPitchInBytes = targetRowPitchInBytes;
-                    imageItem->descriptor.width = image.width;
-                    imageItem->descriptor.height = image.height;
-                    imageItem->descriptor.texelFormatDecompressed = texelFormat;
-                    imageItem->data.Allocate(targetImageSize);
-
-                    LLUtils::Buffer colorMap;
-                    LLUtils::Buffer mappedBuffer;
-
-                    if (isColorMapped)
-                    {
-                        colorMap.Allocate(PNG_IMAGE_COLORMAP_SIZE(image));
-                        mappedBuffer.Allocate(sourceImageSize);
-                    }
-
-                    auto& pngReadBuffer = mappedBuffer != nullptr ? mappedBuffer : imageItem->data;
-
-                    if (png_image_finish_read(&image, nullptr/*background*/, pngReadBuffer.data(),
-                        sourceRowPitchInComponents, colorMap.data()) != 0)
-                    {
-                        if (colorMap != nullptr)
-                            ExtractColorMap(imageItem->data, mappedBuffer, colorMap, targetPixelSize, canvaswidth, canvasheight);
-
-                        out_image = std::make_shared<Image>(imageItem, ImageItemType::Unknown);
-                        result = ImageResult::Success;
-                    }
-                }
+                result.gamma            = gamma / 100000.0;
+                result.transferFunction = gamma == 100000 ? ColorInfo::TransferFunction::Linear
+                                                          : ColorInfo::TransferFunction::Gamma;
+            }
+            int intent = 0;
+            if (png_get_sRGB(state.png, state.info, &intent))
+            {
+                result.srgbRenderingIntent = static_cast<ColorInfo::RenderingIntent>(intent);
+                result.encoding            = ColorInfo::Encoding::SRGB;
+                result.transferFunction    = ColorInfo::TransferFunction::SRGB;
+            }
+            char* name        = nullptr;
+            png_byte* profile = nullptr;
+            png_uint_32 size  = 0;
+            if (png_get_iCCP(state.png, state.info, &name, nullptr, &profile, &size))
+            {
+                const auto* first       = reinterpret_cast<const std::byte*>(profile);
+                result.iccProfile       = std::make_shared<const std::vector<std::byte>>(first, first + size);
+                result.encoding         = ColorInfo::Encoding::ICCProfile;
+                result.transferFunction = ColorInfo::TransferFunction::Unknown;
             }
             return result;
         }
 
-        static void PngWriteCallback(png_structp  png_ptr, png_bytep data, png_size_t length)
+        static void WriteColorInfo(PngSession& state, const ColorInfo& colorInfo)
         {
-            std::vector<uint8_t>* p = (std::vector<uint8_t>*)png_get_io_ptr(png_ptr);
-            p->insert(p->end(), data, data + length);
-        }
-
-
-        struct TPngDestructor {
-            png_struct* p;
-            TPngDestructor(png_struct* p) : p(p) {}
-            ~TPngDestructor() { if (p) { png_destroy_write_struct(&p, NULL); } }
-        };
-
-
-
-        int GetPixelFormat(TexelFormat texelFormat)
-        {
-            switch (texelFormat)
+            if (colorInfo.gamma)
             {
-            case TexelFormat::I_R8_G8_B8_A8:
-                return PNG_COLOR_TYPE_RGBA;
-            case TexelFormat::I_R8_G8_B8:
-                return PNG_COLOR_TYPE_RGB;
-            default:
-                return PNG_COLOR_TYPE_UNKNOWN;
+                constexpr double gammaScale = 100000;
+                const auto gamma            = std::round(*colorInfo.gamma * gammaScale);
+                if (!std::isfinite(gamma) || gamma < 1 || gamma > std::numeric_limits<png_fixed_point>::max())
+                    png_error(state.png, "Invalid PNG gamma");
+                png_set_gAMA_fixed(state.png, state.info, static_cast<png_fixed_point>(gamma));
+            }
+            // Preserve source numbers and their interpretation. A profile carries
+            // the color encoding in preference to an sRGB declaration.
+            if (colorInfo.encoding == ColorInfo::Encoding::ICCProfile)
+            {
+                if (!colorInfo.iccProfile || colorInfo.iccProfile->empty() ||
+                    colorInfo.iccProfile->size() > std::numeric_limits<png_uint_32>::max())
+                    png_error(state.png, "Invalid PNG ICC profile");
+                png_set_iCCP(state.png, state.info, "ICC profile", PNG_COMPRESSION_TYPE_BASE,
+                             reinterpret_cast<const png_byte*>(colorInfo.iccProfile->data()),
+                             static_cast<png_uint_32>(colorInfo.iccProfile->size()));
+            }
+            else if (colorInfo.encoding == ColorInfo::Encoding::SRGB)
+            {
+                const auto intent = static_cast<int>(
+                    colorInfo.srgbRenderingIntent.value_or(ColorInfo::RenderingIntent::Perceptual));
+                if (intent < 0 || intent >= PNG_sRGB_INTENT_LAST)
+                    png_error(state.png, "Invalid PNG sRGB rendering intent");
+                png_set_sRGB(state.png, state.info, intent);
             }
         }
 
-        ImageResult Encode([[maybe_unused]] const ImageSharedPtr& image, const Parameters& EncodeParametrs
-            , [[maybe_unused]] LLUtils::Buffer& encodedBuffer) override
+        static ImageResult ReadImage(PngSession& state, ImageLoadFlags flags, ImageSharedPtr& decoded)
         {
+            auto* png = state.png;
+            if (!state.Call(
+                    [&]
+                    {
+                        png_set_read_fn(png, &state, PngSession::Read);
+                        // Let ImageCodec's storage limit decide which dimensions fit.
+                        png_set_user_limits(png, PNG_UINT_31_MAX, PNG_UINT_31_MAX);
+                        png_set_crc_action(png, PNG_CRC_ERROR_QUIT, PNG_CRC_ERROR_QUIT);
+                        png_read_info(png, state.info);
+                    }))
+                return state.Failure();
 
-            auto texelFormat = GetPixelFormat(image->GetTexelFormat());
+            auto* info             = state.info;
+            const auto width       = png_get_image_width(png, info);
+            const auto height      = png_get_image_height(png, info);
+            const auto sourceDepth = png_get_bit_depth(png, info);
+            const auto color       = png_get_color_type(png, info);
+            const bool animated    = png_get_valid(png, info, PNG_INFO_acTL) != 0;
+            if (!width || !height)
+                return ImageResult::FileIsCorrupted;
 
-            if (texelFormat != PNG_COLOR_TYPE_UNKNOWN)
+            const bool alpha            = (color & PNG_COLOR_MASK_ALPHA) || png_get_valid(png, info, PNG_INFO_tRNS);
+            const bool gray             = color == PNG_COLOR_TYPE_GRAY || color == PNG_COLOR_TYPE_GRAY_ALPHA;
+            const bool rgba             = animated || alpha;
+            const unsigned channels     = rgba ? 4 : gray ? 1 : 3;
+            const unsigned channelBytes = sourceDepth == 16 ? 2 : 1;
+            const size_t pixelBytes     = channels * channelBytes;
+            constexpr auto maximum      = std::numeric_limits<uint32_t>::max();
+            if (uint64_t{width} * pixelBytes > maximum || height > maximum / (uint64_t{width} * pixelBytes))
+                return ImageResult::FormatNotSupported;
+            const auto pitch = static_cast<uint32_t>(width * pixelBytes);
+            // Rows of this table correspond to gray, RGB, and RGBA output.
+            static constexpr TexelFormat formats[][2] = {{TexelFormat::I_X8, TexelFormat::I_X16},
+                                                         {TexelFormat::I_R8_G8_B8, TexelFormat::I_R16_G16_B16},
+                                                         {TexelFormat::I_R8_G8_B8_A8, TexelFormat::I_R16_G16_B16_A16}};
+            const auto format                         = formats[rgba ? 2 : gray ? 0 : 1][channelBytes - 1];
+
+            // Read declarations before update_info normalizes libpng's gamma state.
+            const auto colorInfo = ReadColorInfo(state, rgba);
+
+            // Configure storage expansion only. No gamma, profile, alpha association,
+            // significant-bit rescaling, or precision reduction changes the samples.
+            if (!state.Call(
+                    [&]
+                    {
+                        if (color == PNG_COLOR_TYPE_PALETTE)
+                            png_set_palette_to_rgb(png);
+                        if (gray && sourceDepth < 8)
+                            png_set_expand_gray_1_2_4_to_8(png);
+                        if (png_get_valid(png, info, PNG_INFO_tRNS))
+                            png_set_tRNS_to_alpha(png);
+                        if (rgba && gray)
+                            png_set_gray_to_rgb(png);
+                        if (rgba && !alpha)
+                            png_set_add_alpha(png, channelBytes == 2 ? 65535 : 255, PNG_FILLER_AFTER);
+                        if constexpr (std::endian::native == std::endian::little)
+                            if (channelBytes == 2)
+                                png_set_swap(png);
+                        png_set_interlace_handling(png);
+                        png_read_update_info(png, info);
+                    }))
+                return state.Failure();
+            if (png_get_rowbytes(png, info) != pitch)
+                return ImageResult::FormatNotSupported;
+
+            const ImageDescriptor descriptor{width, height, pitch, format, format};
+            if (animated)
+                return ReadAnimation(state, descriptor, colorInfo, flags, decoded);
+
+            auto image = CreateImage(descriptor, colorInfo);
+            if (!state.ReadRows(image->GetImageItem()->data.data(), pitch, height) ||
+                !state.Call([&] { png_read_end(png, info); }))
+                return state.Failure();
+            decoded = std::move(image);
+            return ImageResult::Success;
+        }
+
+        // Published frames double as the previous canvas. Disposal is applied to
+        // the next output, preserving old frames without another full-size canvas.
+        static ImageResult ReadAnimation(PngSession& state, const ImageDescriptor& descriptor,
+                                         const ColorInfo& colorInfo, ImageLoadFlags flags, ImageSharedPtr& decoded)
+        {
+            auto* png               = state.png;
+            auto* info              = state.info;
+            const auto width        = descriptor.width;
+            const auto height       = descriptor.height;
+            const auto pitch        = descriptor.rowPitchInBytes;
+            const auto channelBytes = descriptor.texelFormatDecompressed == TexelFormat::I_R16_G16_B16_A16 ? 2u : 1u;
+            const size_t pixelBytes = 4 * channelBytes;
+            const size_t imageBytes = size_t{pitch} * height;
+            const bool hidden       = png_get_first_frame_is_hidden(png, info);
+            const bool firstOnly    = (flags & ImageLoadFlags::LoadOnlyFirstImage) != ImageLoadFlags::None;
+            const auto frames       = png_get_num_frames(png, info) - static_cast<unsigned>(hidden);
+            if (!frames)
+                return ImageResult::FileIsCorrupted;
+            if (!firstOnly && frames > std::numeric_limits<uint16_t>::max())
+                return ImageResult::FormatNotSupported;
+
+            std::vector<std::byte> decodedFramePixels, savedRectanglePixels;
+            ImageSharedPtr container, previousImage;
+            Frame previousFrameControl;
+            if (!firstOnly)
             {
-                constexpr int compressionLevel = 6;
-                png_structp p = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-                png_infop info_ptr = png_create_info_struct(p);
+                auto item       = std::make_shared<ImageItem>();
+                item->itemType  = ImageItemType::Container;
+                item->colorInfo = colorInfo;
+                container       = std::make_shared<Image>(item, ImageItemType::AnimationFrame);
+                container->SetNumSubImages(static_cast<uint16_t>(frames));
+            }
+            // A hidden fallback does not contribute pixels to the animation.
+            if (hidden && !state.ReadRows(nullptr, 0, height))
+                return state.Failure();
 
-                TPngDestructor destroyPng(p);
+            const auto count = firstOnly ? 1u : frames;
+            for (uint32_t index = 0; index < count; ++index)
+            {
+                Frame frame;
+                if (!state.Call([&] { png_read_frame_head(png, info); }))
+                    return state.Failure();
+                // The frame reader validates dimensions, offsets, and operations.
+                if (!png_get_next_frame_fcTL(png, info, &frame.width, &frame.height, &frame.x, &frame.y,
+                                             &frame.numerator, &frame.denominator, &frame.dispose, &frame.blend))
+                    return ImageResult::FileIsCorrupted;
+                if (index == 0 && frame.dispose == PNG_fcTL_DISPOSE_OP_PREVIOUS)
+                    frame.dispose = PNG_fcTL_DISPOSE_OP_BACKGROUND;
 
-                png_set_IHDR(p, info_ptr, image->GetWidth(), image->GetHeight(), 8
-                    , texelFormat
-                    , PNG_INTERLACE_NONE
-                    , PNG_COMPRESSION_TYPE_DEFAULT
-                    , PNG_FILTER_TYPE_DEFAULT);
+                auto current                                             = CreateImage(descriptor, colorInfo);
+                current->GetImageItem()->animationData.delayMilliseconds = static_cast<uint32_t>(
+                    uint64_t{frame.numerator} * 1000 / (frame.denominator ? frame.denominator : 100));
+                auto* pixels            = current->GetImageItem()->data.data();
+                const size_t framePitch = frame.width * pixelBytes;
+                const bool fullSource   = frame.width == width && frame.height == height &&
+                                          frame.blend == PNG_fcTL_BLEND_OP_SOURCE;
+                const bool savePrevious = frame.dispose == PNG_fcTL_DISPOSE_OP_PREVIOUS && index + 1 < count;
+                if (!fullSource || savePrevious)
+                {
+                    if (previousImage)
+                        std::memcpy(pixels, previousImage->GetBuffer(), imageBytes);
+                    else
+                        std::memset(pixels, 0, imageBytes);
+                    if (previousImage && previousFrameControl.dispose != PNG_fcTL_DISPOSE_OP_NONE)
+                        for (size_t y = 0; y < previousFrameControl.height; ++y)
+                        {
+                            auto* row        = pixels + (y + previousFrameControl.y) * pitch +
+                                               previousFrameControl.x * pixelBytes;
+                            const auto bytes = previousFrameControl.width * pixelBytes;
+                            if (previousFrameControl.dispose == PNG_fcTL_DISPOSE_OP_BACKGROUND)
+                                std::memset(row, 0, bytes);
+                            else
+                                std::memcpy(row, savedRectanglePixels.data() + y * bytes, bytes);
+                        }
+                }
+                if (savePrevious)
+                {
+                    savedRectanglePixels.resize(framePitch * frame.height);
+                    for (size_t y = 0; y < frame.height; ++y)
+                        std::memcpy(savedRectanglePixels.data() + y * framePitch,
+                                    pixels + (y + frame.y) * pitch + frame.x * pixelBytes, framePitch);
+                }
+                const bool over = frame.blend == PNG_fcTL_BLEND_OP_OVER;
+                if (over)
+                    decodedFramePixels.resize(framePitch * frame.height);
+                auto* target = over ? decodedFramePixels.data() : pixels + frame.y * pitch + frame.x * pixelBytes;
+                if (!state.ReadRows(target, over ? framePitch : pitch, frame.height))
+                    return state.Failure();
+                if (over)
+                    for (size_t y = 0; y < frame.height; ++y)
+                    {
+                        auto* row          = pixels + (y + frame.y) * pitch + frame.x * pixelBytes;
+                        const auto* source = decodedFramePixels.data() + y * framePitch;
+                        if (channelBytes == 2)
+                            Blend<uint16_t>(row, source, frame.width);
+                        else
+                            Blend<uint8_t>(row, source, frame.width);
+                    }
+                previousImage = std::move(current);
+                if (container)
+                    container->SetSubImage(static_cast<uint16_t>(index), previousImage);
+                previousFrameControl = frame;
+            }
+            // First-only loading deliberately leaves the remaining animation unread.
+            if (!firstOnly && !state.Call([&] { png_read_end(png, info); }))
+                return state.Failure();
+            decoded = container ? std::move(container) : std::move(previousImage);
+            return ImageResult::Success;
+        }
 
-                png_set_compression_level(p, compressionLevel);
+      public:
 
+        const PluginProperties& GetPluginProperties() override
+        {
+            static const PluginProperties properties{
+                {0x22a82f61, 0x4c92, 0x432e, {0x93, 0xeb, 0x63, 0x5e, 0x24, 0x54, 0x53, 0x6}},
+                CodecCapabilities::Decode | CodecCapabilities::Encode,
+                LLUTILS_TEXT("PNG Codec"),
+                {{LLUTILS_TEXT("Portable Network Graphics"), {LLUTILS_TEXT("png")}}}};
+            return properties;
+        }
 
-                std::vector<uint8_t> pngEncodedBuffer;
+        ImageResult Decode(const std::byte* buffer, size_t size, ImageLoadFlags flags,
+                           [[maybe_unused]] const Parameters& params, ImageSharedPtr& out_image) override
+        {
+            if (!buffer || !size)
+                return ImageResult::BadParameters;
+            try
+            {
+                PngSession state(false);
+                if (!state.info)
+                    return ImageResult::UnknownError;
+                state.input = {buffer, size};
+                ImageSharedPtr decoded;
+                const auto result = ReadImage(state, flags, decoded);
+                if (result == ImageResult::Success)
+                    out_image = std::move(decoded);
+                return result;
+            }
+            catch (const std::bad_alloc&)
+            {
+                return ImageResult::UnknownError;
+            }
+        }
 
-                std::vector<uint8_t*> rows(image->GetHeight());
-                for (size_t y = 0; y < image->GetHeight(); ++y)
-                    rows[y] = (uint8_t*)image->GetBuffer() + y * image->GetRowPitchInBytes();
-
-                png_set_rows(p, info_ptr, rows.data());
-                png_set_write_fn(p, &pngEncodedBuffer, PngWriteCallback, nullptr);
-                png_write_png(p, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
-                encodedBuffer = { reinterpret_cast<const std::byte*>(pngEncodedBuffer.data()) , pngEncodedBuffer.size() };
-
+        ImageResult Encode(const ImageSharedPtr& image, [[maybe_unused]] const Parameters& params,
+                           LLUtils::Buffer& encodedBuffer) override
+        {
+            if (!image || !image->GetWidth() || !image->GetHeight() || !image->GetBuffer())
+                return ImageResult::BadParameters;
+            const auto format = image->GetTexelFormat();
+            if (format != TexelFormat::I_R8_G8_B8 && format != TexelFormat::I_R8_G8_B8_A8)
+                return ImageResult::FormatNotSupported;
+            const auto& colorInfo = image->GetImageItem()->colorInfo;
+            // PNG stores straight alpha. Unassociating here would change samples
+            // and cannot recover colors that were lost under zero alpha.
+            if (colorInfo.alphaMode == ColorInfo::AlphaMode::Premultiplied)
+                return ImageResult::FormatNotSupported;
+            // This encoder writes RGB layouts. A grayscale profile can accompany
+            // a decoded, expanded gray image, but cannot label an RGB PNG stream.
+            constexpr size_t iccColorSpaceOffset = 16;
+            constexpr size_t iccColorSpaceBytes  = 4;
+            if (colorInfo.encoding == ColorInfo::Encoding::ICCProfile && colorInfo.iccProfile &&
+                colorInfo.iccProfile->size() >= iccColorSpaceOffset + iccColorSpaceBytes &&
+                std::memcmp(colorInfo.iccProfile->data() + iccColorSpaceOffset, "RGB ", iccColorSpaceBytes) != 0)
+                return ImageResult::FormatNotSupported;
+            const unsigned channels = format == TexelFormat::I_R8_G8_B8 ? 3 : 4;
+            const uint64_t rowBytes = uint64_t{image->GetWidth()} * channels;
+            const uint64_t required = uint64_t{image->GetHeight() - 1} * image->GetRowPitchInBytes() + rowBytes;
+            if (rowBytes > image->GetRowPitchInBytes() || required > image->GetImageItem()->data.size())
+                return ImageResult::BadParameters;
+            try
+            {
+                PngSession state(true);
+                if (!state.info)
+                    return ImageResult::UnknownError;
+                if (!state.Call(
+                        [&]
+                        {
+                            png_set_write_fn(state.png, &state, PngSession::Write, nullptr);
+                            png_set_IHDR(state.png, state.info, image->GetWidth(), image->GetHeight(), 8,
+                                         channels == 3 ? PNG_COLOR_TYPE_RGB : PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
+                                         PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+                            png_set_compression_level(state.png, 6);
+                            WriteColorInfo(state, colorInfo);
+                            png_write_info(state.png, state.info);
+                            for (size_t y = 0; y < image->GetHeight(); ++y)
+                                png_write_row(state.png, reinterpret_cast<const png_byte*>(
+                                                             image->GetBuffer() + y * image->GetRowPitchInBytes()));
+                            png_write_end(state.png, state.info);
+                        }))
+                    return state.allocationFailed ? ImageResult::UnknownError : ImageResult::BadParameters;
+                LLUtils::Buffer encoded(state.output.size());
+                if (!encoded.data())
+                    return ImageResult::UnknownError;
+                std::memcpy(encoded.data(), state.output.data(), state.output.size());
+                encodedBuffer = std::move(encoded);
                 return ImageResult::Success;
             }
-            else
-                return ImageResult::FormatNotSupported;
+            catch (const std::bad_alloc&)
+            {
+                return ImageResult::UnknownError;
+            }
         }
-
     };
-}
+}  // namespace IMCodec

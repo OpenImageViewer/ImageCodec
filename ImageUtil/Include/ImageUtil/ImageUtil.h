@@ -73,7 +73,8 @@ namespace IMUtil
                     LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "OIV::Image::Transom works only with byte aligned image formats.");
 
                 ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
-                imageItem->descriptor = image->GetDescriptor();
+                imageItem->descriptor        = image->GetDescriptor();
+                imageItem->colorInfo         = image->GetImageItem()->colorInfo;
                 imageItem->data.Allocate(image->GetTotalSizeOfImageTexels());
                 imageItem->itemType = image->GetItemType();
                 std::byte* dest = imageItem->data.data();
@@ -162,9 +163,9 @@ namespace IMUtil
             if (image->GetIsRowPitchNormalized() == true)
                 LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "image already normalized.");
 
-
-            const std::byte* oldBuffer = image->GetBuffer();
-            normalizedImageProperties = image->GetDescriptor();
+            const std::byte* oldBuffer     = image->GetBuffer();
+            normalizedImageProperties      = image->GetDescriptor();
+            normalizedImageItem->colorInfo = image->GetImageItem()->colorInfo;
             normalizedImageItem->data.Allocate(image->GetTotalSizeOfImageTexels());
             uint32_t targetRowPitch = image->GetBytesPerRowOfPixels();
             std::byte* newBuffer = normalizedImageItem->data.data();
@@ -194,10 +195,12 @@ namespace IMUtil
             {
                 using namespace IMCodec;
                 const std::byte* sourceBuffer = sourceImage->GetBuffer();
-                ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
+                ImageItemSharedPtr imageItem  = std::make_shared<ImageItem>();
 
-                const uint32_t destBufferSize = subimage.GetWidth() * subimage.GetHeight() * sourceImage->GetBytesPerTexel();
-                imageItem->descriptor = sourceImage->GetDescriptor();
+                const uint32_t destBufferSize = subimage.GetWidth() * subimage.GetHeight() *
+                                                sourceImage->GetBytesPerTexel();
+                imageItem->descriptor         = sourceImage->GetDescriptor();
+                imageItem->colorInfo          = sourceImage->GetImageItem()->colorInfo;
                 imageItem->data.Allocate(destBufferSize);
                 std::byte* destBuffer = imageItem->data.data();
 

@@ -9,7 +9,7 @@
 	url = https://github.com/TheNicker/libpsd.git
 [submodule "External/libpng"]
 	path = External/libpng
-	url = https://github.com/lib-apng/libapng.git
+	url = https://github.com/pnggroup/libpng
 [submodule "External/zlib"]
 	path = External/zlib
 	url = https://github.com/madler/zlib.git
