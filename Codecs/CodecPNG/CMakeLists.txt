@@ -45,9 +45,12 @@ option(PNG_STATIC       "Build static lib" OFF)
 option(PNG_TESTS        "Build libpng tests" OFF)
 option(PNG_TOOLS        "Build libpng tools" OFF)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(PNG_PREFIX "imcodec_" CACHE STRING "Prefix for ImageCodec's private libpng API" FORCE)
-endif()
+# Prefixing originated on Linux to avoid collisions with existing libpng libraries.
+# Use imcodec_ for ImageCodec's private libpng build on every platform for consistency.
+set(PNG_PREFIX "imcodec_" CACHE STRING "Prefix for ImageCodec's private libpng API" FORCE)
+
+# Prefix generation needs AWK, which Git for Windows provides outside the default PATH.
+find_program(AWK NAMES gawk nawk awk HINTS "$ENV{ProgramFiles}/Git/usr/bin" REQUIRED)
 
 set(SKIP_INSTALL_LIBRARIES TRUE)
 set(SKIP_INSTALL_ALL TRUE)
