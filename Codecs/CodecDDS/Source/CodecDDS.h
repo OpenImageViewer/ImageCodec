@@ -9,6 +9,10 @@
 #include <limits>
 #include <new>
 #include <vector>
+#include <atomic>
+#include <array>
+#include <future>
+#include <thread>
 
 namespace IMCodec
 {
@@ -164,6 +168,69 @@ namespace IMCodec
             }
         }
 
+        // Split only large BC surfaces, at complete block-row boundaries. One
+        // foreground load may enlist up to three helpers; overlapping large loads
+        // stay serial rather than multiplying the viewer's outer worker count.
+        static HRESULT DecompressSurface(const DirectX::Image& source, const DirectX::Image& destination)
+        {
+            constexpr size_t minimumPixels = 2048 * 2048;
+            if (source.height < 16 || source.width < minimumPixels / source.height)
+                return DirectX::Decompress(source, destination);
+            static std::atomic<unsigned> active{0};
+            struct ActiveLoad
+            {
+                std::atomic<unsigned>& count;
+                ~ActiveLoad() { count.fetch_sub(1, std::memory_order_relaxed); }
+            };
+            const auto previous = active.fetch_add(1, std::memory_order_relaxed);
+            ActiveLoad loading{active};
+            const auto workers = std::min(4u, std::max(1u, std::thread::hardware_concurrency()));
+            if (previous || workers == 1)
+                return DirectX::Decompress(source, destination);
+
+            const auto decode = [&](size_t worker)
+            {
+                const size_t blocks = (source.height + 3) / 4;
+                const size_t first  = blocks * worker / workers;
+                const size_t last   = blocks * (worker + 1) / workers;
+                const size_t rows   = std::min(source.height, last * 4) - first * 4;
+                auto input          = source;
+                auto output         = destination;
+                input.height = output.height = rows;
+                input.pixels += first * source.rowPitch;
+                input.slicePitch = (last - first) * source.rowPitch;
+                output.pixels += first * 4 * destination.rowPitch;
+                output.slicePitch = rows * destination.rowPitch;
+                return DirectX::Decompress(input, output);
+            };
+            std::array<std::future<HRESULT>, 3> tasks;
+            HRESULT result = S_OK;
+            for (size_t worker = 1; worker < workers; ++worker)
+            {
+                try
+                {
+                    tasks[worker - 1] = std::async(std::launch::async, decode, worker);
+                }
+                catch (const std::system_error&)
+                {
+                    const auto hr = decode(worker);
+                    if (FAILED(hr))
+                        result = hr;
+                }
+            }
+            const auto first = decode(0);
+            if (FAILED(first))
+                result = first;
+            for (auto& task : tasks)
+                if (task.valid())
+                {
+                    const auto hr = task.get();
+                    if (FAILED(hr))
+                        result = hr;
+                }
+            return result;
+        }
+
         ImageResult LoadSurface(const DirectX::Image& surface, ImageItem& item,
                                 const std::shared_ptr<const LLUtils::Buffer>& owner)
         {
@@ -262,7 +329,7 @@ namespace IMCodec
                                                  format,        rowPitch,
                                                  slicePitch,    reinterpret_cast<uint8_t*>(item.data.data())};
                 if (compressed)
-                    result = MapResult(DirectX::Decompress(surface, destination));
+                    result = MapResult(DecompressSurface(surface, destination));
                 else if (convert)
                     result = MapResult(DirectX::Convert(surface, destination, DirectX::TEX_FILTER_DEFAULT,
                                                         DirectX::TEX_THRESHOLD_DEFAULT));

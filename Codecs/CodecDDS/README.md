@@ -43,3 +43,11 @@ using libdds's caller-owned Convert overload. Legacy 24-bit layout expansion use
 the owning DDS loader before final image storage.
 
 See [Benchmarks/README.md](Benchmarks/README.md) for the storage pool probe.
+
+Large BC surfaces (approximately four million pixels or more) can use up to three
+async helpers alongside the calling thread. Work is split at complete BC block-row
+boundaries, including partial bottom/right blocks. Only one large surface at a time
+may enlist helpers. Overlapping large decodes run serially. All tasks finish before
+the result is exposed or its storage can return to the pool. Small images and native
+images keep their existing paths. This policy bounds extra concurrency rather than
+creating a separate persistent worker pool. Original libdds decoder code is unchanged.
