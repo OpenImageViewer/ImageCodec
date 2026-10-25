@@ -83,7 +83,7 @@ namespace IMUtil
                 static const uint8_t MaxGlobalThrads = 32;
                 static uint8_t maxThreads = static_cast<uint8_t>(
                     min(static_cast<unsigned int>(MaxGlobalThrads), max(1u, thread::hardware_concurrency() - 1)));
-                static thread threads[MaxGlobalThrads];
+
 
 
                 const size_t bytesPerThread = MegaBytesPerThread * 1024 * 1024;
@@ -103,6 +103,8 @@ namespace IMUtil
 
                 if (totalThreads > 0)
                 {
+                    // Concurrent viewer and preview transforms own independent workers.
+                    thread threads[MaxGlobalThrads];
                     size_t rowsPerThread = image->GetHeight() / totalThreads;
                     for (uint8_t threadNum = 0; threadNum < totalThreads; threadNum++)
                     {
