@@ -48,10 +48,28 @@ namespace IMCodec
         } flash;
     };
 
+    enum class SourceColorSpace : uint8_t
+    {
+        Unknown,
+        RGB,
+        YCbCr,
+        Gray,
+        CMYK,
+        YCCK
+    };
+
+    // Source provenance is shared by derived images and remains unchanged after loading.
+    // An ICC profile here describes the source, not necessarily the current pixel buffer.
     struct ItemMetaData
     {
         ExifData exifData{};
+        SourceColorSpace sourceColorSpace = SourceColorSpace::Unknown;
+        // Whether decoded CMYK samples were inverted before normalization to ink amounts.
+        bool sourceCmykInverted = false;
+        std::vector<std::byte> iccProfile;
     };
+
+    using ItemMetaDataSharedPtr = std::shared_ptr<ItemMetaData>;
 
     struct ItemProcessData
     {
@@ -143,8 +161,8 @@ namespace IMCodec
         /// codec process information
         /// </summary>
         ItemProcessData processData{};
+        ItemMetaDataSharedPtr metaData;
     };
 
-    using ImageItemSharedPtr    = std::shared_ptr<ImageItem>;
-    using ItemMetaDataSharedPtr = std::shared_ptr<ItemMetaData>;
+    using ImageItemSharedPtr = std::shared_ptr<ImageItem>;
 }  // namespace IMCodec

@@ -1,14 +1,15 @@
 #pragma once
 
 #include <type_traits>
-#include <map>
-#include <functional>
+#include <array>
+#include <algorithm>
+#include <utility>
 #include <LLUtils/Platform.h>
 #include <TexelFormat.h>
 
 namespace IMUtil
 {
-#pragma pack(push,1)
+#pragma pack(push, 1)
     struct uint24_t
     {
         uint8_t val[3];
@@ -24,69 +25,64 @@ namespace IMUtil
     template <size_t var_width>
     struct VariableWidth
     {
-
     };
 
     template <>
     struct VariableWidth<8>
     {
         using var = uint8_t;
-
     };
 
     template <>
     struct VariableWidth<16>
     {
         using var = uint16_t;
-
     };
-
 
     template <>
     struct VariableWidth<24>
     {
         using var = uint24_t;
-
     };
-
 
     template <>
     struct VariableWidth<32>
     {
         using var = uint32_t;
-
     };
 
     template <>
     struct VariableWidth<48>
     {
         using var = uint48_t;
-
     };
 
     template <>
     struct VariableWidth<64>
     {
         using var = uint64_t;
-
     };
 
-    template <uint8_t dest_index, typename channel_dest_type, typename channel_source_type, uint8_t source_index_head, uint8_t... source_index_tail>
+    template <uint8_t dest_index, typename channel_dest_type, typename channel_source_type, uint8_t source_index_head,
+              uint8_t... source_index_tail>
     constexpr LLUTILS_FORCE_INLINE void _Swizzle(std::byte* i_dest, const std::byte* i_src)
     {
-        //if diff is positive destination is wider than source
+        // if diff is positive destination is wider than source
 
         constexpr ptrdiff_t diff = sizeof(channel_dest_type) - sizeof(channel_source_type);
 
         reinterpret_cast<channel_dest_type*>(i_dest)[dest_index] =
-            ((static_cast<channel_dest_type>((reinterpret_cast<const channel_source_type*>(i_src)[source_index_head])
-                >> std::max< ptrdiff_t>(0, -diff * CHAR_BIT))) << std::max<ptrdiff_t>(0, diff * CHAR_BIT));
+            ((static_cast<channel_dest_type>((reinterpret_cast<const channel_source_type*>(i_src)[source_index_head]) >>
+                                             std::max<ptrdiff_t>(0, -diff * CHAR_BIT)))
+             << std::max<ptrdiff_t>(0, diff * CHAR_BIT));
 
         if constexpr (sizeof...(source_index_tail) == 0)
         {
             reinterpret_cast<channel_dest_type*>(i_dest)[dest_index] =
-                ((static_cast<channel_dest_type>((reinterpret_cast<const channel_source_type*>(i_src)[source_index_head])
-                    >> std::max<ptrdiff_t>(0, -diff * CHAR_BIT))) << std::max<ptrdiff_t>(0, diff * CHAR_BIT));
+                ((static_cast<channel_dest_type>(
+                     (reinterpret_cast<const channel_source_type*>(i_src)[source_index_head]) >>
+                     std::max<ptrdiff_t>(0, -diff * CHAR_BIT)))
+                 << std::max<ptrdiff_t>(0, diff * CHAR_BIT));
         }
         else
         {
@@ -95,17 +91,18 @@ namespace IMUtil
     }
 
     template <uint8_t bit_width_dest, uint8_t bit_width_source, uint8_t source_index_head, uint8_t... source_index_tail>
-    LLUTILS_FORCE_INLINE  void Swizzle(std::byte* i_dest, const std::byte* i_src)
+    LLUTILS_FORCE_INLINE void Swizzle(std::byte* i_dest, const std::byte* i_src)
     {
-        using channel_dest_type = typename VariableWidth<bit_width_dest>::var;
+        using channel_dest_type   = typename VariableWidth<bit_width_dest>::var;
         using channel_source_type = typename VariableWidth<bit_width_source>::var;
         _Swizzle<0, channel_dest_type, channel_source_type, source_index_head, source_index_tail...>(i_dest, i_src);
     }
 
-    template <uint8_t bit_width_dest, uint8_t bit_width_source, uint8_t append_index, auto append_value, uint8_t source_index_head, uint8_t... source_index_tail>
-    LLUTILS_FORCE_INLINE  void SwizzleAppend(std::byte* i_dest, const std::byte* i_src)
+    template <uint8_t bit_width_dest, uint8_t bit_width_source, uint8_t append_index, auto append_value,
+              uint8_t source_index_head, uint8_t... source_index_tail>
+    LLUTILS_FORCE_INLINE void SwizzleAppend(std::byte* i_dest, const std::byte* i_src)
     {
-        using channel_dest_type = typename VariableWidth<bit_width_dest>::var;
+        using channel_dest_type   = typename VariableWidth<bit_width_dest>::var;
         using channel_source_type = typename VariableWidth<bit_width_source>::var;
 
         _Swizzle<0, channel_dest_type, channel_source_type, source_index_head, source_index_tail...>(i_dest, i_src);
@@ -114,7 +111,6 @@ namespace IMUtil
 
     struct ConvertKey
     {
-
         struct Hash
         {
             constexpr std::size_t operator()(const ConvertKey& convertKey) const
@@ -137,35 +133,27 @@ namespace IMUtil
             return static_cast<eumType>(source) << (sizeof(eumType) * 8) | static_cast<eumType>(target);
         }
 
-        constexpr bool operator<(const ConvertKey& rhs) const
-        {
-            return key() < rhs.key();
-        }
-        
+        constexpr bool operator<(const ConvertKey& rhs) const { return key() < rhs.key(); }
 
-        constexpr bool operator==(const ConvertKey& rhs) const
-        {
-            return source == rhs.source && target == rhs.target;
-        }
+        constexpr bool operator==(const ConvertKey& rhs) const { return source == rhs.source && target == rhs.target; }
 
         IMCodec::TexelFormat source;
         IMCodec::TexelFormat target;
     };
 
-   
-
     class TexelConvertor
     {
-    public:
-    
-        bool Convert(IMCodec::TexelFormat targetPixelFormat, IMCodec::TexelFormat sourcePixelFormat,
-            std::byte* destBuffer, const std::byte* sourceBuffer, size_t numpixels);
-       
-    private:
-        using SwizzleFuncType = std::function<void(std::byte*, const std::byte*)>;
-        using MapConvertKeyToFunc = std::map<ConvertKey, SwizzleFuncType>;
+      public:
 
-        void  ConvertSegment(std::byte* i_dest, const std::byte* i_src, size_t count, uint8_t sourceSize, uint8_t destSize, SwizzleFuncType swizzle)
+        bool Convert(IMCodec::TexelFormat targetPixelFormat, IMCodec::TexelFormat sourcePixelFormat,
+                     std::byte* destBuffer, const std::byte* sourceBuffer, size_t numpixels);
+
+      private:
+
+        using SwizzleFuncType = void (*)(std::byte*, const std::byte*);
+
+        void ConvertSegment(std::byte* i_dest, const std::byte* i_src, size_t count, uint8_t sourceSize,
+                            uint8_t destSize, SwizzleFuncType swizzle)
         {
             for (size_t i = 0; i < count; i++)
             {
@@ -175,29 +163,68 @@ namespace IMUtil
             }
         }
 
-        SwizzleFuncType PopulateSwizzleFunc(IMCodec::TexelFormat sourcePixelFormat, IMCodec::TexelFormat targetPixelFormat);
-
         SwizzleFuncType FindSwizzleFunc(IMCodec::TexelFormat sourcePixelFormat, IMCodec::TexelFormat targetPixelFormat);
 
-        //TODO: change to constexpr
-        MapConvertKeyToFunc fConversionMappings = {
-            {ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8, IMCodec::TexelFormat::I_B8_G8_R8), SwizzleFuncType(Swizzle< 8, 8, 2, 1, 0>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8, IMCodec::TexelFormat::I_R8_G8_B8_A8), SwizzleFuncType(SwizzleAppend< 8, 8, 3,0xFF, 0, 1, 2>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8, IMCodec::TexelFormat::I_B8_G8_R8_A8), SwizzleFuncType(SwizzleAppend< 8, 8, 3,0xFF, 2, 1, 0>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8, IMCodec::TexelFormat::I_R8_G8_B8), SwizzleFuncType(Swizzle< 8, 8, 2, 1, 0>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8, IMCodec::TexelFormat::I_B8_G8_R8_A8), SwizzleFuncType(SwizzleAppend< 8, 8, 3,0xFF, 0, 1, 2>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8, IMCodec::TexelFormat::I_R8_G8_B8_A8), SwizzleFuncType(SwizzleAppend< 8, 8, 3,0xFF, 2, 1, 0>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8_A8, IMCodec::TexelFormat::I_R8_G8_B8), SwizzleFuncType(Swizzle< 8, 8, 0, 1, 2>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_B16_G16_R16_A16, IMCodec::TexelFormat::I_B8_G8_R8_A8), SwizzleFuncType(Swizzle<8, 16, 0, 1, 2 ,3>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16_A16, IMCodec::TexelFormat::I_R8_G8_B8_A8), SwizzleFuncType(Swizzle<8, 16, 0, 1, 2, 3>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16_A16, IMCodec::TexelFormat::I_B8_G8_R8_A8), SwizzleFuncType(Swizzle<8, 16, 2, 1, 0,3>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16, IMCodec::TexelFormat::I_B8_G8_R8), SwizzleFuncType(Swizzle<8, 16, 2, 1, 0>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16, IMCodec::TexelFormat::I_B8_G8_R8_A8), SwizzleFuncType(SwizzleAppend<8, 16,3,0xFF, 2, 1, 0>)}
-            ,{ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16, IMCodec::TexelFormat::I_R8_G8_B8_A8), SwizzleFuncType(SwizzleAppend<8, 16,3,0xFF, 0, 1, 2>)}
-            ,{ ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8_A8, IMCodec::TexelFormat::I_R8_G8_B8_A8)   ,SwizzleFuncType(Swizzle<8, 8, 2, 1, 0,3>) }
-            ,{ ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8_A8, IMCodec::TexelFormat::I_B8_G8_R8)      ,SwizzleFuncType(Swizzle<8, 8, 0, 1, 2>) }
-            ,{ ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8_A8, IMCodec::TexelFormat::I_B8_G8_R8_A8)   ,SwizzleFuncType(Swizzle<8, 8, 2, 1, 0, 3>) }
-            ,{ ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8_A8, IMCodec::TexelFormat::I_B8_G8_R8)      ,SwizzleFuncType(Swizzle<8, 8, 2, 1, 0>) }
-        };
+        template <bool Bgr>
+        static void ConvertCmykPixel(std::byte* dest, const std::byte* source)
+        {
+            // Basic display approximation. Embedded ICC profiles remain source metadata.
+            const unsigned int white = 255u - std::to_integer<unsigned int>(source[3]);
+            for (size_t channel = 0; channel < 3; ++channel)
+            {
+                const unsigned int color          = 255u - std::to_integer<unsigned int>(source[channel]);
+                dest[Bgr ? 2 - channel : channel] = static_cast<std::byte>((color * white + 127) / 255);
+            }
+            dest[3] = std::byte{255};
+        }
+
+        // The supported conversions are fixed. Sort once at compile time for allocation-free lookup.
+        static constexpr auto fConversionMappings = []
+        {
+            auto mappings = std::to_array<std::pair<ConvertKey, SwizzleFuncType>>(
+                {// CMYK requires arithmetic rather than swizzling. Reuse this table's traversal and
+                 // threading for both viewer rasterization and direct renderer uploads.
+                 {ConvertKey(IMCodec::TexelFormat::I_C8_M8_Y8_K8, IMCodec::TexelFormat::I_R8_G8_B8_A8),
+                  ConvertCmykPixel<false>},
+                 {ConvertKey(IMCodec::TexelFormat::I_C8_M8_Y8_K8, IMCodec::TexelFormat::I_B8_G8_R8_A8),
+                  ConvertCmykPixel<true>},
+                 {ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8, IMCodec::TexelFormat::I_B8_G8_R8),
+                  SwizzleFuncType(Swizzle<8, 8, 2, 1, 0>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8, IMCodec::TexelFormat::I_R8_G8_B8_A8),
+                  SwizzleFuncType(SwizzleAppend<8, 8, 3, 0xFF, 0, 1, 2>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8, IMCodec::TexelFormat::I_B8_G8_R8_A8),
+                  SwizzleFuncType(SwizzleAppend<8, 8, 3, 0xFF, 2, 1, 0>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8, IMCodec::TexelFormat::I_R8_G8_B8),
+                  SwizzleFuncType(Swizzle<8, 8, 2, 1, 0>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8, IMCodec::TexelFormat::I_B8_G8_R8_A8),
+                  SwizzleFuncType(SwizzleAppend<8, 8, 3, 0xFF, 0, 1, 2>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8, IMCodec::TexelFormat::I_R8_G8_B8_A8),
+                  SwizzleFuncType(SwizzleAppend<8, 8, 3, 0xFF, 2, 1, 0>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8_A8, IMCodec::TexelFormat::I_R8_G8_B8),
+                  SwizzleFuncType(Swizzle<8, 8, 0, 1, 2>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_B16_G16_R16_A16, IMCodec::TexelFormat::I_B8_G8_R8_A8),
+                  SwizzleFuncType(Swizzle<8, 16, 0, 1, 2, 3>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16_A16, IMCodec::TexelFormat::I_R8_G8_B8_A8),
+                  SwizzleFuncType(Swizzle<8, 16, 0, 1, 2, 3>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16_A16, IMCodec::TexelFormat::I_B8_G8_R8_A8),
+                  SwizzleFuncType(Swizzle<8, 16, 2, 1, 0, 3>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16, IMCodec::TexelFormat::I_B8_G8_R8),
+                  SwizzleFuncType(Swizzle<8, 16, 2, 1, 0>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16, IMCodec::TexelFormat::I_B8_G8_R8_A8),
+                  SwizzleFuncType(SwizzleAppend<8, 16, 3, 0xFF, 2, 1, 0>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R16_G16_B16, IMCodec::TexelFormat::I_R8_G8_B8_A8),
+                  SwizzleFuncType(SwizzleAppend<8, 16, 3, 0xFF, 0, 1, 2>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8_A8, IMCodec::TexelFormat::I_R8_G8_B8_A8),
+                  SwizzleFuncType(Swizzle<8, 8, 2, 1, 0, 3>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_B8_G8_R8_A8, IMCodec::TexelFormat::I_B8_G8_R8),
+                  SwizzleFuncType(Swizzle<8, 8, 0, 1, 2>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8_A8, IMCodec::TexelFormat::I_B8_G8_R8_A8),
+                  SwizzleFuncType(Swizzle<8, 8, 2, 1, 0, 3>)},
+                 {ConvertKey(IMCodec::TexelFormat::I_R8_G8_B8_A8, IMCodec::TexelFormat::I_B8_G8_R8),
+                  SwizzleFuncType(Swizzle<8, 8, 2, 1, 0>)}});
+            std::sort(mappings.begin(), mappings.end(),
+                      [](const auto& left, const auto& right) { return left.first < right.first; });
+            return mappings;
+        }();
     };
-}
+}  // namespace IMUtil
