@@ -36,6 +36,23 @@ namespace IMUtil
 
     };
 
+    IMCodec::ImageItemSharedPtr ImageUtil::CreateDerivedImageItem(const IMCodec::ImageSharedPtr& source,
+                                                                  IMCodec::TexelFormat format, uint32_t width,
+                                                                  uint32_t height)
+    {
+        auto item                                = std::make_shared<IMCodec::ImageItem>();
+        item->descriptor                         = source->GetDescriptor();
+        item->descriptor.width                   = width;
+        item->descriptor.height                  = height;
+        item->descriptor.texelFormatDecompressed = format;
+        const IMCodec::ImageDesc layout(&item->descriptor);
+        item->descriptor.rowPitchInBytes = layout.GetBytesPerRowOfPixels();
+        item->colorInfo                  = source->GetImageItem()->colorInfo;
+        item->metaData                   = source->GetImageItem()->metaData;
+        item->data.Allocate(layout.GetTotalSizeOfImageTexels());
+        return item;
+    }
+
     IMCodec::ImageSharedPtr ImageUtil::Convert(IMCodec::ImageSharedPtr sourceImage,
                                                IMCodec::TexelFormat targetPixelFormat)
     {
@@ -45,13 +62,36 @@ namespace IMUtil
 
         if (sourceImage->GetTexelFormat() != targetPixelFormat)
         {
-            ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
-            imageItem->descriptor        = sourceImage->GetDescriptor();
-            // Convert only repacks or scales channels. Intensity normalization
-            // creates its own image and must not inherit this source encoding.
-            imageItem->colorInfo = sourceImage->GetImageItem()->colorInfo;
-            imageItem->metaData  = sourceImage->GetImageItem()->metaData;
-            const auto hasAlpha  = [](const TexelInfo& format)
+            const auto& colorInfo = sourceImage->GetImageItem()->colorInfo;
+            if (colorInfo.transferFunction == ImageItem::ColorInfo::TransferFunction::Sampled &&
+                colorInfo.sampledTransfer &&
+                std::ranges::any_of(
+                    colorInfo.sampledTransfer->channels, [](const auto& curve)
+                    { return curve && curve->indexing == SampledTransferCurve::Indexing::DirectInteger; }))
+            {
+                // Direct curves index current integer codes. Apply them before changing that code domain.
+                // Adding or removing alpha does not change the RGB channel codes.
+                const auto& sourceInfo     = sourceImage->GetTexelInfo();
+                const auto& targetInfo     = GetTexelInfo(targetPixelFormat);
+                const auto targetChannels  = std::span(targetInfo.channles).first(targetInfo.numChannles);
+                const bool changesRgbCodes = std::ranges::any_of(
+                    std::span(sourceInfo.channles).first(sourceInfo.numChannles),
+                    [&](const ChannelInfo& channel)
+                    {
+                        if (channel.semantic != ChannelSemantic::Red && channel.semantic != ChannelSemantic::Green &&
+                            channel.semantic != ChannelSemantic::Blue)
+                            return false;
+                        const auto target = std::ranges::find(targetChannels, channel.semantic, &ChannelInfo::semantic);
+                        return target == targetChannels.end() || target->width != channel.width ||
+                               target->channelDataType != channel.channelDataType;
+                    });
+                if (changesRgbCodes)
+                    return nullptr;
+            }
+            // Channel repacking retains color interpretation. Intensity normalization owns its output policy.
+            auto imageItem      = CreateDerivedImageItem(sourceImage, targetPixelFormat, sourceImage->GetWidth(),
+                                                         sourceImage->GetHeight());
+            const auto hasAlpha = [](const TexelInfo& format)
             {
                 return std::ranges::any_of(std::span(format.channles).first(format.numChannles),
                                            [](const ChannelInfo& channel)
@@ -60,14 +100,7 @@ namespace IMUtil
             if (!hasAlpha(GetTexelInfo(targetPixelFormat)) || !hasAlpha(sourceImage->GetTexelInfo()))
                 imageItem->colorInfo.alphaMode = ImageItem::ColorInfo::AlphaMode::Opaque;
 
-            // Size the destination through the same checked layout API used by image consumers.
-            // A uint32_t pixels * bits intermediate wraps already at 512 MiB for RGBA/CMYK.
-            imageItem->descriptor.texelFormatDecompressed = targetPixelFormat;
-            const ImageDesc targetLayout(&imageItem->descriptor);
-            const uint8_t targetPixelSizeInBits   = targetLayout.GetBitsPerTexel();
-            const size_t targetSize               = targetLayout.GetTotalSizeOfImageTexels();
-            imageItem->descriptor.rowPitchInBytes = targetLayout.GetBytesPerRowOfPixels();
-            imageItem->data.Allocate(targetSize);
+            const uint8_t targetPixelSizeInBits = ImageDesc(&imageItem->descriptor).GetBitsPerTexel();
             if (imageItem->data.data() == nullptr)
                 return nullptr;
 

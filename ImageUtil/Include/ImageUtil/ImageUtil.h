@@ -22,6 +22,12 @@ namespace IMUtil
     {
       private:
 
+        // Allocate packed destination pixels while retaining source layout provenance and metadata.
+        // Callers fill the buffer and update color interpretation only when their operation changes it.
+        static IMCodec::ImageItemSharedPtr CreateDerivedImageItem(const IMCodec::ImageSharedPtr& source,
+                                                                  IMCodec::TexelFormat format, uint32_t width,
+                                                                  uint32_t height);
+
         enum class NormalizeMode
         {
             Default   = 0,
@@ -157,18 +163,12 @@ namespace IMUtil
                 LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError,
                              "can not normalize a non byte aligned pixel format.");
 
-            ImageItemSharedPtr normalizedImageItem     = std::make_shared<ImageItem>();
-            ImageDescriptor& normalizedImageProperties = normalizedImageItem->descriptor;
-            // imageItem->itemType = image->getty
-
             if (image->GetIsRowPitchNormalized() == true)
                 LL_EXCEPTION(LLUtils::Exception::ErrorCode::LogicError, "image already normalized.");
 
-            const std::byte* oldBuffer     = image->GetBuffer();
-            normalizedImageProperties      = image->GetDescriptor();
-            normalizedImageItem->colorInfo = image->GetImageItem()->colorInfo;
-            normalizedImageItem->metaData  = image->GetImageItem()->metaData;
-            normalizedImageItem->data.Allocate(image->GetTotalSizeOfImageTexels());
+            const std::byte* oldBuffer = image->GetBuffer();
+            auto normalizedImageItem   = CreateDerivedImageItem(image, image->GetTexelFormat(), image->GetWidth(),
+                                                                image->GetHeight());
             if (normalizedImageItem->data.data() == nullptr)
                 throw std::bad_alloc();
             uint32_t targetRowPitch = image->GetBytesPerRowOfPixels();
@@ -179,13 +179,20 @@ namespace IMUtil
                 std::memcpy(newBuffer + y * targetRowPitch, oldBuffer + y * image->GetRowPitchInBytes(),
                             targetRowPitch);
 
-            normalizedImageProperties.rowPitchInBytes = targetRowPitch;
-
             return std::make_shared<Image>(normalizedImageItem, image->GetSubImageGroupType());
         }
 
         static IMCodec::ImageSharedPtr Convert(IMCodec::ImageSharedPtr sourceImage,
                                                IMCodec::TexelFormat targetPixelFormat);
+
+        // Shared or per-channel sampled curves map unsigned RGB/RGBA8 or RGB/RGBA16 into linear RGBA16.
+        // Inactive sampled transfers share the input. Float pixels, other color spaces, and premultiplied
+        // input alpha are not supported. Original samples remain available on the source image.
+        static IMCodec::ImageSharedPtr ApplyTransferFunction(const IMCodec::ImageSharedPtr& image);
+
+        // Encode linear sRGB RGBA16 into display sRGB RGBA8 using fixed full-range scaling.
+        // Other images are shared unchanged, independently of intensity normalization policies.
+        static IMCodec::ImageSharedPtr EncodeLinearImageForDisplay(const IMCodec::ImageSharedPtr& image);
 
         static IMCodec::ImageSharedPtr GetSubImage(IMCodec::ImageSharedPtr sourceImage, LLUtils::RectI32 subimage)
         {
@@ -195,15 +202,9 @@ namespace IMUtil
             if (subimage.IsNonNegative() && subimage.IsInside(image))
             {
                 using namespace IMCodec;
-                ImageItemSharedPtr imageItem = std::make_shared<ImageItem>();
-                imageItem->descriptor        = sourceImage->GetDescriptor();
-                imageItem->metaData          = sourceImage->GetImageItem()->metaData;
-                imageItem->colorInfo         = sourceImage->GetImageItem()->colorInfo;
-                imageItem->descriptor.width  = subimage.GetWidth();
-                imageItem->descriptor.height = subimage.GetHeight();
-                const ImageDesc targetLayout(&imageItem->descriptor);
-                imageItem->descriptor.rowPitchInBytes = targetLayout.GetBytesPerRowOfPixels();
-                imageItem->data.Allocate(targetLayout.GetTotalSizeOfImageTexels());
+                auto imageItem = CreateDerivedImageItem(sourceImage, sourceImage->GetTexelFormat(),
+                                                        static_cast<uint32_t>(subimage.GetWidth()),
+                                                        static_cast<uint32_t>(subimage.GetHeight()));
                 if (imageItem->data.data() == nullptr)
                     throw std::bad_alloc();
                 const auto topLeft = subimage.GetCorner(LLUtils::Corner::TopLeft);

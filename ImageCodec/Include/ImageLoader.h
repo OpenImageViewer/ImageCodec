@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <algorithm>
 #include <filesystem>
 #include <LLUtils/StringUtility.h>
 #include "Image.h"
@@ -101,8 +102,9 @@ namespace IMCodec
             ImageResult result = ImageResult::UnknownError;
             PluginID choosenPlugin{};
 
-            if (extension.empty() == false)
-                choosenPlugin = GetFirstPlugin(LLUtils::StringUtility::ToLower<string_type>(extension));
+            const auto compatible = fMapPlugins.find(LLUtils::StringUtility::ToLower<string_type>(extension));
+            if (compatible != fMapPlugins.end())
+                choosenPlugin = compatible->second.front();
 
             if (choosenPlugin != PluginID())
                 result = fImageCodec.Decode(buffer, size, choosenPlugin, imageLoadFlags, params, out_image);
@@ -117,11 +119,31 @@ namespace IMCodec
                                                    (traverseMode & PluginTraverseMode::OnlyKnownFileType) ==
                                                        PluginTraverseMode::OnlyKnownFileType));
 
-            // const bool shouldTraveseOnlySuitable = (traverseMode & PluginTraverseMode::SuitablePlugin) ==
-            // PluginTraverseMode::SuitablePlugin;
-
-            // If image not loaded and allow to load using unregistred file extensions, iterate over all image plugins.
-            if (shouldTraversPlugins)
+            if ((traverseMode & PluginTraverseMode::SuitablePlugin) == PluginTraverseMode::SuitablePlugin)
+            {
+                // Suitable traversal is restricted to this extension, even with broader flags present.
+                // Unsupported formats may fall through, while corruption and parameter errors stay visible.
+                const auto unsupported = [](ImageResult value)
+                { return value == ImageResult::FormatNotSupported || value == ImageResult::NotImplemented; };
+                if (isKnownFileType)
+                {
+                    const auto& candidates = compatible->second;
+                    for (size_t index = 1; index < candidates.size() && unsupported(result); ++index)
+                    {
+                        // Extension aliases may register one decoder more than once.
+                        if (std::none_of(candidates.begin(), candidates.begin() + index,
+                                         [&](const PluginID& previous) { return previous == candidates[index]; }))
+                        {
+                            ImageSharedPtr candidate;
+                            result = fImageCodec.Decode(buffer, size, candidates[index], imageLoadFlags, params,
+                                                        candidate);
+                            if (result == ImageResult::Success)
+                                out_image = std::move(candidate);
+                        }
+                    }
+                }
+            }
+            else if (shouldTraversPlugins)
             {
                 for (auto plugin : fListPlugins)
                 {

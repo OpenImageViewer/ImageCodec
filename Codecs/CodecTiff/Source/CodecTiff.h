@@ -6,6 +6,7 @@
 #include <tiffio.hxx>
 #include "TiffClientFunctions.h"
 #include "TiffFile.h"
+#include "LinearDng.h"
 #include <LLUtils/Exception.h>
 #include <IImagePlugin.h>
 
@@ -29,7 +30,7 @@ namespace IMCodec
                 {
                     {
                         { LLUTILS_TEXT("Tag Image File Format")}
-                        ,{ LLUTILS_TEXT("tif"),LLUTILS_TEXT("tiff")}
+                        ,{ LLUTILS_TEXT("tif"),LLUTILS_TEXT("tiff"),LLUTILS_TEXT("dng")}
                     }
                 }
 
@@ -383,6 +384,9 @@ namespace IMCodec
         {
             using namespace std;
 
+            out_image.reset();
+            if (buffer == nullptr || size < 8 || size > static_cast<size_t>(std::numeric_limits<tsize_t>::max()))
+                return ImageResult::BadParameters;
             ImageResult result = ImageResult::UnknownError;
             TiffFile tifFile(reinterpret_cast<const uint8_t*>(buffer), size);
             TIFF* tiff = tifFile.GetTiff();
@@ -390,6 +394,9 @@ namespace IMCodec
             std::vector<ImageSharedPtr> subImages;
             if (tiff != nullptr)
             {
+                uint8_t* dngVersion = nullptr;
+                if (TIFFGetField(tiff, TIFFTAG_DNGVERSION, &dngVersion))
+                    return DecodeLinearDng(tiff, out_image);
                 int currentSubImage = 0;
 
                 auto firstImageItemChannles = GetImage(tiff);

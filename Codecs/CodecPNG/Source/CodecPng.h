@@ -464,6 +464,9 @@ namespace IMCodec
             if (format != TexelFormat::I_R8_G8_B8 && format != TexelFormat::I_R8_G8_B8_A8)
                 return ImageResult::FormatNotSupported;
             const auto& colorInfo = image->GetImageItem()->colorInfo;
+            // Do not discard pending curves or label linear samples as display-encoded sRGB.
+            if (colorInfo.RequiresTransferBakeForEncoding())
+                return ImageResult::FormatNotSupported;
             // PNG stores straight alpha. Unassociating here would change samples
             // and cannot recover colors that were lost under zero alpha.
             if (colorInfo.alphaMode == ColorInfo::AlphaMode::Premultiplied)

@@ -82,4 +82,17 @@ target_include_directories(${TargetName} PRIVATE ${LibTiffFolder}/libtiff)
 target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/libtiff/libtiff)
 
 
-target_link_libraries(${TargetName} tiff)
+target_link_libraries(${TargetName} PUBLIC tiff)
+
+# DNG JPEG tiles contain stored RGB samples, decoded before any raw development.
+target_compile_definitions(${TargetName} PRIVATE IMCODEC_TIFF_DNG_JPEG=$<BOOL:${IMCODEC_BUILD_CODEC_JPG}>)
+if(IMCODEC_BUILD_CODEC_JPG)
+    target_link_libraries(${TargetName} PRIVATE libjpeg-turbo::libjpeg-turbo)
+endif()
+
+# Calibration comes from untrusted rational metadata, including invalid floating-point values.
+if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    set_source_files_properties(Source/LinearDng.cpp PROPERTIES COMPILE_OPTIONS "/fp:precise")
+else()
+    set_source_files_properties(Source/LinearDng.cpp PROPERTIES COMPILE_OPTIONS "-fno-fast-math")
+endif()

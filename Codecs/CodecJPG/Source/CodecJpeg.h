@@ -279,6 +279,10 @@ namespace IMCodec
             if (image == nullptr)
                 return ReportResult(LogLevel::Warning, ImageResult::BadParameters,
                                     "[JPEG] Encode input is null: result={}({})");
+            // Apply transfer and display encoding before writing RGB samples without that interpretation.
+            if (image->GetImageItem()->colorInfo.RequiresTransferBakeForEncoding())
+                return ReportResult(LogLevel::Info, ImageResult::FormatNotSupported,
+                                    "[JPEG] Encode requires display-encoded samples: result={}({})");
             const int pixelFormat = GetPixelFormat(image->GetTexelFormat());
             if (pixelFormat == TJPF_UNKNOWN)
                 return ReportResult(LogLevel::Info, ImageResult::FormatNotSupported,
