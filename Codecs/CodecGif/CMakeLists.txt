@@ -24,4 +24,4 @@ if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
 endif()
 
 include_directories(${giflibFolder}/libgif/include)
-target_link_libraries(${TargetName} libgif)
+target_link_libraries(${TargetName} PRIVATE libgif)

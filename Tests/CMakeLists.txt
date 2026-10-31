@@ -1,0 +1,93 @@
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(IMCODEC_TEST_WLX_PREVIEW "Include the OIViewer WLX DNG preview integration test" OFF)
+option(IMCODEC_TEST_OIV_FILE_IMAGE "Include OIVShared file-image metadata integration tests" OFF)
+
+include(FetchContent)
+if(NOT TARGET Catch2::Catch2WithMain)
+	FetchContent_Declare(Catch2
+		GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+		GIT_TAG de7e8630134f46e67a6b59269436f9cab94cd28e
+	)
+	FetchContent_MakeAvailable(Catch2)
+endif()
+
+find_package(Threads REQUIRED)
+
+set(testSources)
+set(testLibraries ImageCodec Threads::Threads)
+
+if(IMCODEC_BUILD_IMAGE_UTIL)
+	list(APPEND testSources TestImageLayout.cpp)
+	list(APPEND testLibraries ImageUtil)
+endif()
+
+if(IMCODEC_BUILD_CODEC_DDS)
+	list(APPEND testSources TestDDSCodec.cpp)
+	list(APPEND testLibraries CodecDDS)
+endif()
+
+if(IMCODEC_BUILD_CODEC_TIFF AND IMCODEC_BUILD_CODEC_JPG AND IMCODEC_BUILD_IMAGE_UTIL)
+	list(APPEND testSources TestDngCodec.cpp)
+	list(APPEND testLibraries CodecTiff ImageUtil libjpeg-turbo::libjpeg-turbo)
+endif()
+
+if(IMCODEC_BUILD_CODEC_GIF)
+	list(APPEND testSources TestGIFCodec.cpp)
+	list(APPEND testLibraries CodecGif)
+endif()
+
+if(IMCODEC_BUILD_CODEC_JPG AND IMCODEC_BUILD_IMAGE_UTIL)
+	list(APPEND testSources TestJpegCodec.cpp)
+	list(APPEND testLibraries CodecJPG ImageUtil libjpeg-turbo::libjpeg-turbo)
+endif()
+
+if(IMCODEC_BUILD_CODEC_PNG AND IMCODEC_BUILD_IMAGE_UTIL)
+	list(APPEND testSources TestPNGCodec.cpp)
+	list(APPEND testLibraries CodecPNG ImageUtil)
+endif()
+
+if(testSources)
+	add_executable(tests_imagecodec ${testSources})
+	target_link_libraries(tests_imagecodec PRIVATE Catch2::Catch2WithMain ${testLibraries})
+	target_compile_definitions(tests_imagecodec PRIVATE
+		"IMCODEC_TEST_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\"")
+	if(TARGET CodecFreeImage)
+		target_compile_definitions(tests_imagecodec PRIVATE OIV_TEST_DNG_FALLBACK=1)
+	endif()
+	if(IMCODEC_TEST_WLX_PREVIEW)
+		set(wlxPreviewSource "${PROJECT_SOURCE_DIR}/../../OIViewer/SrcPlatform/Win32/WlxPreview.cpp")
+        if(NOT WIN32 OR NOT TARGET LWSLib OR NOT TARGET oivshared OR NOT EXISTS "${wlxPreviewSource}")
+            message(FATAL_ERROR "IMCODEC_TEST_WLX_PREVIEW requires Windows OIViewer and OIVShared targets")
+		endif()
+		target_sources(tests_imagecodec PRIVATE "${wlxPreviewSource}")
+		target_include_directories(tests_imagecodec PRIVATE "${PROJECT_SOURCE_DIR}/../../OIViewer/Source")
+        target_link_libraries(tests_imagecodec PRIVATE oivshared LWSLib)
+		target_compile_definitions(tests_imagecodec PRIVATE OIV_TEST_WLX_PREVIEW=1)
+	endif()
+	if(IMCODEC_TEST_OIV_FILE_IMAGE)
+        set(oivFileImageHeader "${PROJECT_SOURCE_DIR}/../../OIVShared/Source/Include/ImageProcessing/FileImage.h")
+        if(NOT TARGET oivshared OR NOT EXISTS "${oivFileImageHeader}")
+            message(FATAL_ERROR "IMCODEC_TEST_OIV_FILE_IMAGE requires OIVShared sources")
+		endif()
+        target_link_libraries(tests_imagecodec PRIVATE oivshared)
+		target_compile_definitions(tests_imagecodec PRIVATE OIV_TEST_FILE_IMAGE=1)
+	endif()
+	if(WIN32)
+		foreach(runtimeTarget IN ITEMS FreeImage png_shared zlib tiff libjpeg-turbo::libjpeg-turbo)
+			if(TARGET ${runtimeTarget})
+				get_target_property(runtimeTargetType ${runtimeTarget} TYPE)
+				if(runtimeTargetType STREQUAL "SHARED_LIBRARY")
+					add_custom_command(TARGET tests_imagecodec POST_BUILD
+						COMMAND ${CMAKE_COMMAND} -E copy_if_different
+							"$<TARGET_FILE:${runtimeTarget}>"
+							"$<TARGET_FILE_DIR:tests_imagecodec>")
+				endif()
+			endif()
+		endforeach()
+	endif()
+	add_test(NAME imagecodec.unit COMMAND tests_imagecodec --reporter compact)
+	set_tests_properties(imagecodec.unit PROPERTIES LABELS "ImageCodec;Unit")
+else()
+	message(STATUS "No ImageCodec test sources are enabled by the selected codec options")
+endif()

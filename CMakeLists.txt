@@ -1,8 +1,18 @@
 cmake_minimum_required (VERSION 3.10)
+if(POLICY CMP0079)
+	cmake_policy(SET CMP0079 NEW)
+endif()
 project(ImageCodec)
 
 #Image Codec
 set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(IMCODEC_BUILD_TESTS_DEFAULT OFF)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+	set(IMCODEC_BUILD_TESTS_DEFAULT ON)
+endif()
+option(IMCODEC_BUILD_TESTS "Build ImageCodec tests" ${IMCODEC_BUILD_TESTS_DEFAULT})
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND ${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
 	message("Cross compiling: Host: linux, Target: Windows")
@@ -16,7 +26,7 @@ endif()
 
 
 include_directories(./ImageCodec/Include)
-include_directories(./External/LLUtils/Include)
+add_subdirectory(./External/LLUtils)
 
 option(IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS "Disable warnings for external libraries" TRUE)
 
@@ -92,4 +102,21 @@ endif()
 
 if (IMCODEC_BUILD_EXAMPLES AND IMCODEC_BUILD_CODEC_JPG AND IMCODEC_BUILD_CODEC_PNG)
   add_subdirectory(Example)
+endif()
+
+if(IMCODEC_BUILD_TESTS)
+	enable_testing()
+	add_subdirectory(Tests)
+endif()
+
+foreach(codecTarget IN ITEMS
+	CodecBMP CodecDDS CodecFreeImage CodecGif CodecIcon CodecJPG CodecPNG CodecPSD CodecTiff CodecWebP)
+	if(TARGET ${codecTarget})
+		target_link_libraries(${codecTarget} PRIVATE LLUtils::LLUtils)
+	endif()
+endforeach()
+
+target_link_libraries(ImageCodec PUBLIC LLUtils::LLUtils)
+if(TARGET ImageUtil)
+	target_link_libraries(ImageUtil PUBLIC LLUtils::LLUtils)
 endif()

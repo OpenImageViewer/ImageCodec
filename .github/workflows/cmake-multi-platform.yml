@@ -54,15 +54,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          fetch-depth: 1	  
 
       - name: Install MinGW (only if mingw is true)
         if: matrix.mingw == true
         run: |
           sudo apt-get update
           sudo apt-get install -y mingw-w64
-
-      - name: Update submodules
-        run: git submodule update --init --recursive --depth 1
 
       - name: Set build directory
         id: vars
@@ -74,10 +74,15 @@ jobs:
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DIMCODEC_BUILD_TESTS=ON
           ${{ matrix.mingw && '-DCMAKE_TOOLCHAIN_FILE=mingw-w64-x86_64.cmake' || '' }}
 
       - name: Build
         run: cmake --build ${{ github.workspace }}/build --config ${{ matrix.build_type }}
+
+      - name: Run ImageCodec tests
+        if: matrix.mingw == false
+        run: ctest --test-dir ${{ github.workspace }}/build -C ${{ matrix.build_type }} --output-on-failure -R '^imagecodec.unit$'
 
       - name: Run tests
         if: matrix.mingw == false

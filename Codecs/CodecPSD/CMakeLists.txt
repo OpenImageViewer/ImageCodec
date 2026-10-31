@@ -11,7 +11,7 @@ add_library (${TargetName} ${sourceFiles} )
 set(LibPSDFolder ../../External/libpsd)
 add_subdirectory(${LibPSDFolder} ./external/libpsd)
 include_directories(${LibPSDFolder}/include)
-target_link_libraries(${TargetName} libpsd)
+target_link_libraries(${TargetName} PRIVATE libpsd)
 
 if (IMCODEC_DISABLE_WARNINGS_EXTERNAL_LIBS)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")

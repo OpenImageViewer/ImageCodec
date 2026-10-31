@@ -70,5 +70,5 @@ endif()
 
 target_include_directories(${TargetName} PRIVATE ${LibPNGFolder})
 target_include_directories(${TargetName} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/libpng)
-target_link_libraries(${TargetName} png_shared )
+target_link_libraries(${TargetName} PRIVATE png_shared )
 target_include_directories(png_shared PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/external/zlib)
